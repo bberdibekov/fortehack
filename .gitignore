@@ -1,0 +1,11 @@
+# Python-generated files
+backend/__pycache__/
+backend/*.py[oc]
+
+# Virtual environments
+*.venv
+
+
+/scripts
+/docs
+/data
