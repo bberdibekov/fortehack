@@ -11,7 +11,6 @@ interface MermaidViewerProps {
 }
 
 // 1. Global CSS to enforce fonts across ALL diagram types
-// This fixes the issue where some charts revert to Times New Roman
 const globalMermaidStyles = `
   .mermaid svg { 
     font-family: 'Inter', ui-sans-serif, system-ui, sans-serif !important; 

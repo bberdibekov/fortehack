@@ -107,7 +107,6 @@ export const MainLayout = () => {
             <ResizablePanel defaultSize={50} minSize={20} className="h-full bg-background border-l flex flex-col">
                <ArtifactHeader isFullscreen={false} />
                <div className="flex-1 overflow-hidden relative">
-                  {/* FIX 2: Use ArtifactContainer here */}
                   <ArtifactContainer />
                </div>
             </ResizablePanel>

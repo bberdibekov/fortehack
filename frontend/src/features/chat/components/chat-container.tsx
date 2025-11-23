@@ -102,7 +102,6 @@ export const ChatContainer = () => {
         </div>
       </ScrollArea>
 
-      {/* C. Fixed Input Area */}
       <div className="flex-none w-full bg-background/80 backdrop-blur-sm z-10">
         <ChatInput onSend={sendMessage} disabled={isStreaming} />
       </div>

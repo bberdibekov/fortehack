@@ -2,8 +2,8 @@ import React, { useRef, useState } from 'react';
 import { SendHorizontal, Paperclip, Mic } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Textarea } from '@/shared/components/ui/textarea';
-import { useChatStore } from '@/features/chat/stores/chat-store'; // Import Store
-import { AttachmentPreview } from './attachment-preview'; // Import Preview
+import { useChatStore } from '@/features/chat/stores/chat-store';
+import { AttachmentPreview } from './attachment-preview';
 
 interface ChatInputProps {
   onSend: (message: string, attachments: File[]) => void; // Update signature
