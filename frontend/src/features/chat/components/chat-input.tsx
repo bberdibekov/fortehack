@@ -4,6 +4,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { useChatStore } from '@/features/chat/stores/chat-store';
 import { AttachmentPreview } from './attachment-preview';
+import { SuggestionChips } from './suggestion-chips';
 
 interface ChatInputProps {
   onSend: (message: string, attachments: File[]) => void; // Update signature
@@ -53,12 +54,30 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
     // Reset input so same file can be selected again
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
+  const handleSuggestionClick = (text: string) => {
+    setInput(text);
+    // Focus the textarea so they can edit or hit enter
+    if (textareaRef.current) {
+        textareaRef.current.focus();
+        // Trigger auto-resize logic immediately
+        setTimeout(() => {
+            if(textareaRef.current) {
+                textareaRef.current.style.height = 'auto';
+                textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+            }
+        }, 0);
+    }
+  };
 
   return (
     <div className="max-w-3xl mx-auto w-full px-4 pb-4 pt-2">
       
       {/* 1. Preview Area (New) */}
       <AttachmentPreview />
+
+      <div className="mb-1">
+        <SuggestionChips onSelect={handleSuggestionClick} />
+      </div>
 
       <div className="relative flex items-end gap-2 bg-muted/30 rounded-2xl p-2 ring-offset-background focus-within:ring-2 focus-within:ring-ring/10 transition-all mt-2">
         
@@ -87,7 +106,7 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
           onChange={handleInput}
           onKeyDown={handleKeyDown}
           placeholder="Message AI..."
-          className="min-h-[24px] max-h-[200px] w-full resize-none border-0 bg-transparent p-2 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground scrollbar-hide"
+          className="min-h-[6] max-h-[200px] w-full resize-none border-0 bg-transparent p-2 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground scrollbar-hide"
           rows={1}
           disabled={disabled}
         />

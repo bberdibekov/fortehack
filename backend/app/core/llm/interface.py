@@ -1,4 +1,4 @@
-# src/core/llm/interface.py
+# app/core/llm/interface.py
 from abc import ABC, abstractmethod
 from typing import List, Dict, Type, TypeVar, Optional
 from pydantic import BaseModel

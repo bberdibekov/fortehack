@@ -1,8 +1,7 @@
 from fastapi import FastAPI
+from app.api.websockets import router as websocket_router
 
 app = FastAPI()
 
 
-@app.get("/")
-async def root():
-    return {"message": "Hello World"}
+app.include_router(websocket_router)

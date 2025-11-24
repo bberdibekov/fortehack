@@ -89,7 +89,7 @@ export const MainLayout = () => {
         
         {/* STATE 1: CHAT ONLY */}
         {layoutMode === 'chat' && (
-          <div className="flex-1 h-full w-full relative">
+          <div className="flex-1 h-full w-full relative flex flex-col overflow-hidden">
             <ChatContainer />
             <OpenArtifactsButton />
           </div>
@@ -98,13 +98,17 @@ export const MainLayout = () => {
         {/* STATE 2: SPLIT VIEW */}
         {layoutMode === 'split' && (
           <ResizablePanelGroup direction="horizontal" className="h-full w-full rounded-none border-0">
-            <ResizablePanel defaultSize={50} minSize={20} className="h-full relative">
+            <ResizablePanel 
+               defaultSize={50} 
+               minSize={20} 
+               className="h-full relative flex flex-col overflow-hidden" 
+            >
               <ChatContainer />
             </ResizablePanel>
 
             <ResizableHandle withHandle className="bg-border/50 w-1 hover:bg-primary/20 transition-colors" />
 
-            <ResizablePanel defaultSize={50} minSize={20} className="h-full bg-background border-l flex flex-col">
+            <ResizablePanel defaultSize={50} minSize={20} className="h-full bg-background border-l flex flex-col overflow-hidden">
                <ArtifactHeader isFullscreen={false} />
                <div className="flex-1 overflow-hidden relative">
                   <ArtifactContainer />

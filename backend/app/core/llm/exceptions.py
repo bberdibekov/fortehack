@@ -1,4 +1,4 @@
-# src/core/llm/exceptions.py
+# app/core/llm/exceptions.py
 
 class LLMError(Exception):
     """Base class for LLM exceptions."""

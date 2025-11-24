@@ -1,12 +1,11 @@
 import { create } from 'zustand';
-
-export interface Message {
+export type SystemStatus = 'idle' | 'thinking' | 'working' | 'success';export interface Message {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: number;
   status?: 'streaming' | 'complete' | 'error';
-  attachments?: FileAttachment[]; // <--- New field
+  attachments?: FileAttachment[]; 
 }
 
 // New Interface
@@ -22,24 +21,29 @@ export interface FileAttachment {
 interface ChatState {
   messages: Message[];
   isStreaming: boolean;
+  status: SystemStatus;
+  statusMessage: string;
   pendingAttachments: FileAttachment[];
+  suggestions: string[];
   reset: () => void;
   
   // Actions
   addMessage: (message: Message) => void;
   updateLastMessage: (contentDelta: string) => void;
-  setStatus: (isStreaming: boolean) => void;
-  
-  // New Actions
+  setStatus: (status: SystemStatus, message?: string) => void;
   addAttachment: (file: File) => void;
   removeAttachment: (id: string) => void;
   clearAttachments: () => void;
+  setSuggestions: (suggestions: string[]) => void;
 }
 
 export const useChatStore = create<ChatState>((set) => ({
   messages: [],
+  status: 'idle',
+  statusMessage: '',
   isStreaming: false,
-  pendingAttachments: [], // Start empty
+  pendingAttachments: [],
+  suggestions: [],
   
   addMessage: (msg) => set((state) => ({ 
     messages: [...state.messages, msg] 
@@ -51,8 +55,7 @@ export const useChatStore = create<ChatState>((set) => ({
     const updatedMsg = { ...lastMsg, content: lastMsg.content + delta };
     return { messages: [...state.messages.slice(0, -1), updatedMsg] };
   }),
-  
-  setStatus: (status) => set({ isStreaming: status }),
+  setStatus: (status, message = '') => set({ status, statusMessage: message }),
 
   // --- Attachment Logic ---
   addAttachment: (file) => {
@@ -76,6 +79,7 @@ export const useChatStore = create<ChatState>((set) => ({
   })),
 
   clearAttachments: () => set({ pendingAttachments: [] }),
+  setSuggestions: (suggestions) => set({ suggestions }),
   reset: () => set({ 
     messages: [], 
     isStreaming: false, 

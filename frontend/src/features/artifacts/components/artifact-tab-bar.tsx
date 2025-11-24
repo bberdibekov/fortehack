@@ -43,7 +43,7 @@ export const ArtifactTabBar = () => {
               id={`tab-${artifact.id}`}
               onClick={() => setActiveArtifact(artifact.id)}
               className={cn(
-                "group flex items-center gap-2 px-3 h-8 min-w-[140px] max-w-[200px] rounded-t-md border-t border-x text-xs font-medium cursor-pointer select-none transition-all relative top-[1px]",
+                "group flex items-center gap-2 px-3 h-8 min-w-[140px] max-w-[200px] rounded-t-md border-t border-x text-xs font-medium cursor-pointer select-none transition-all relative top-[px]",
                 isActive 
                   ? "bg-background border-border text-foreground z-10 shadow-sm" 
                   : "bg-transparent border-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground"

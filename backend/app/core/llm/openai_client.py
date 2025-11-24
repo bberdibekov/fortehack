@@ -1,14 +1,14 @@
-# src/core/llm/openai_client.py
+# app/core/llm/openai_client.py
 import time
 from typing import List, Dict, Type, TypeVar, Optional, Any
 from pydantic import BaseModel
 from openai import AsyncOpenAI, APIError, RateLimitError, APIConnectionError, InternalServerError
 from tenacity import retry, stop_after_attempt, wait_random_exponential, retry_if_exception_type
 
-from src.config.settings import AppConfig
-from src.core.llm.interface import ILLMClient
-from src.core.llm.exceptions import LLMRefusalError
-from src.utils.logger import setup_logger
+from app.config.settings import AppConfig
+from app.core.llm.interface import ILLMClient
+from app.core.llm.exceptions import LLMRefusalError
+from app.utils.logger import setup_logger
 
 logger = setup_logger("LLM_Client")
 
