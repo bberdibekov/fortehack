@@ -7,15 +7,17 @@ import { AttachmentPreview } from './attachment-preview';
 import { SuggestionChips } from './suggestion-chips';
 
 interface ChatInputProps {
-  onSend: (message: string, attachments: File[]) => void; // Update signature
+  onSend: (message: string, attachments: File[]) => void;
   disabled?: boolean;
 }
 
 export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
-  const [input, setInput] = useState('');
+  // --- DEFAULT TEXT HERE ---
+  const [input, setInput] = useState('Please generate a sample loan process to analyze risks.');
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Store hooks
   const { addAttachment, pendingAttachments, clearAttachments } = useChatStore();
 
@@ -28,22 +30,25 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
 
   const handleSend = () => {
     if ((!input.trim() && pendingAttachments.length === 0) || disabled) return;
-    
+
     // Extract actual File objects to send
     const filesToSend = pendingAttachments.map(a => a.file);
-    
+
     onSend(input, filesToSend);
-    
+
     // Reset State
     setInput('');
     clearAttachments();
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
+
+
+
   };
 
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
     e.target.style.height = 'auto';
-    e.target.style.height = `${e.target.scrollHeight}px`;
+    e.target.style.height = `${ e.target.scrollHeight } px`;
   };
 
   // Handle File Selection
@@ -58,21 +63,21 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
     setInput(text);
     // Focus the textarea so they can edit or hit enter
     if (textareaRef.current) {
-        textareaRef.current.focus();
-        // Trigger auto-resize logic immediately
-        setTimeout(() => {
-            if(textareaRef.current) {
-                textareaRef.current.style.height = 'auto';
-                textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-            }
-        }, 0);
+      textareaRef.current.focus();
+      // Trigger auto-resize logic immediately
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.style.height = 'auto';
+          textareaRef.current.style.height = `${ textareaRef.current.scrollHeight } px`;
+        }
+      }, 0);
     }
   };
 
   return (
     <div className="max-w-3xl mx-auto w-full px-4 pb-4 pt-2">
-      
-      {/* 1. Preview Area (New) */}
+
+      {/* 1. Preview Area */}
       <AttachmentPreview />
 
       <div className="mb-1">
@@ -80,20 +85,20 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
       </div>
 
       <div className="relative flex items-end gap-2 bg-muted/30 rounded-2xl p-2 ring-offset-background focus-within:ring-2 focus-within:ring-ring/10 transition-all mt-2">
-        
+
         {/* Hidden File Input */}
-        <input 
-          type="file" 
-          multiple 
-          className="hidden" 
-          ref={fileInputRef} 
+        <input
+          type="file"
+          multiple
+          className="hidden"
+          ref={fileInputRef}
           onChange={handleFileSelect}
         />
 
         {/* Paperclip Trigger */}
-        <Button 
-          variant="ghost" 
-          size="icon" 
+        <Button
+          variant="ghost"
+          size="icon"
           className="h-9 w-9 text-muted-foreground mb-0.5 shrink-0 rounded-xl hover:bg-background"
           onClick={() => fileInputRef.current?.click()}
         >
@@ -112,8 +117,8 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
         />
 
         {input.trim() || pendingAttachments.length > 0 ? (
-           <Button 
-            size="icon" 
+          <Button
+            size="icon"
             onClick={handleSend}
             disabled={disabled}
             className="h-9 w-9 mb-0.5 shrink-0 bg-blue-600 hover:bg-blue-700 transition-all rounded-xl"
@@ -122,10 +127,10 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
           </Button>
         ) : (
           <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground mb-0.5 shrink-0 rounded-xl hover:bg-background">
-             <Mic className="h-5 w-5" />
+            <Mic className="h-5 w-5" />
           </Button>
         )}
-       
+
       </div>
       <div className="text-center mt-2">
         <span className="text-xs text-muted-foreground/60">
@@ -133,5 +138,8 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
         </span>
       </div>
     </div>
+
+
+
   );
 };
