@@ -5,16 +5,28 @@ export type WebSocketMessage =
   | MsgChatDelta
   | MsgSuggestionsUpdate
   | MsgArtifactOpen
-  | MsgArtifactUpdate;
+  | MsgArtifactUpdate
+  | MsgStateUpdate
+  | MsgValidationWarn;
 export type SystemStatus = "idle" | "thinking" | "working" | "success";
 export type ArtifactType = "code" | "markdown" | "json" | "html" | "pdf" | "mermaid" | "workbook" | "stories";
 export type Language = string | null;
+export type Projectscope = string | null;
+export type Responsibilities = string | null;
+export type Actors = Persona[];
+export type Processsteps = ProcessStep[];
+export type Issues = ValidationIssue[];
 export type Priority = "High" | "Medium" | "Low";
 export type Stories = UserStory[];
 export type Icon = string | null;
 export type Items = WorkbookItem[];
 export type Categories = WorkbookCategory[];
 
+/**
+ * This class is never instantiated in the app.
+ * It exists solely to aggregate all types so the generation script
+ * exports everything in one go.
+ */
 export interface FrontendContract {
   websocket_message: WebSocketMessage;
   user_story_data: UserStoryData;
@@ -55,6 +67,42 @@ export interface MsgArtifactUpdate {
 export interface ArtifactUpdatePayload {
   id: string;
   content: string;
+}
+export interface MsgStateUpdate {
+  type: "STATE_UPDATE";
+  payload: StateSnapshot;
+}
+export interface StateSnapshot {
+  sessionId: string;
+  projectScope?: Projectscope;
+  actors?: Actors;
+  processSteps?: Processsteps;
+  goal?: BusinessGoal | null;
+}
+export interface Persona {
+  roleName: string;
+  responsibilities?: Responsibilities;
+}
+export interface ProcessStep {
+  stepId: number;
+  actor: string;
+  description: string;
+}
+export interface BusinessGoal {
+  mainGoal: string;
+  successMetrics?: string[];
+}
+export interface MsgValidationWarn {
+  type: "VALIDATION_WARN";
+  payload: ValidationWarnPayload;
+}
+export interface ValidationWarnPayload {
+  issues: Issues;
+  safetyScore?: number;
+}
+export interface ValidationIssue {
+  severity: string;
+  message: string;
 }
 export interface UserStoryData {
   stories: Stories;
