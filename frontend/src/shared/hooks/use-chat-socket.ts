@@ -61,7 +61,7 @@ export const useChatSocket = () => {
     }, 100);
 
     // 3. Send to Socket
-    // In prod need to  upload files via HTTP first, get IDs,
+    // In prod need to upload files via HTTP first, get IDs,
     // and send those IDs along with the text message.
     if (socketRef.current) {
       socketRef.current.sendMessage(content);

@@ -5,11 +5,11 @@ from typing import List, Optional, Any
 class ToolCallRequest:
     call_id: str
     function_name: str
-    arguments: str  # JSON string
+    arguments: str
 
 @dataclass
 class LLMResponse:
     content: Optional[str] = None
     tool_calls: List[ToolCallRequest] = field(default_factory=list)
-    role: str = "assistant"  # <--- This field was missing in your version
+    role: str = "assistant"
     raw_response: Any = None

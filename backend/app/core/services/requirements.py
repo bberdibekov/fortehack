@@ -4,7 +4,6 @@ from app.core.services.state_manager import StateManager
 from app.core.gap_engine import GapEngine
 from app.agents.checker import CheckerAgent
 from app.domain.models.state import SessionState, BusinessGoal, Persona, ProcessStep
-# FIX: Import ComplianceReport from the correct module
 from app.domain.models.validation import ComplianceReport 
 
 class RequirementsService:

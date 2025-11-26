@@ -47,9 +47,6 @@ class ContractUserStory(CamelModel):
     benefit: str
     description: str = "" 
     goal: str = ""
-    # FIX: Removed '= []' default. 
-    # This forces TS to generate 'scope: string[]' (Required) instead of 'scope?: string[]'.
-    # The Mapper handles providing the empty list.
     scope: List[str] 
     out_of_scope: List[str] 
     acceptance_criteria: List[str]

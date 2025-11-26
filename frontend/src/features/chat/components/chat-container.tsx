@@ -52,7 +52,6 @@ export const ChatContainer = () => {
 
   // 4. Render
   return (
-    // FIX 1: Added min-h-0 to allow flex shrinking within the ResizablePanel
     <div 
       className="flex flex-col h-full w-full bg-background relative"
       onDragOver={onDragOver}
@@ -60,12 +59,6 @@ export const ChatContainer = () => {
       onDrop={onDrop}
     >
       <StatusIndicator />
-
-      {/* ... Drag Overlay ... */}
-
-      {/* SCROLL AREA: The CSS Hack */}
-      {/* 1. flex-1: Take available space */}
-      {/* 2. min-h-0: Allow shrinking (Firefox/Chrome fix) */}
       <ScrollArea 
         ref={scrollRef} 
         className="flex-1 min-h-0 w-full p-0"
