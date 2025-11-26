@@ -1,5 +1,7 @@
 import { create } from 'zustand';
-export type SystemStatus = 'idle' | 'thinking' | 'working' | 'success';export interface Message {
+import { type SystemStatus } from '@/core/api/types/generated';
+
+export interface Message {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;

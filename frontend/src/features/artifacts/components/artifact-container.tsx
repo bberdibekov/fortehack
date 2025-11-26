@@ -8,6 +8,7 @@ import { HtmlViewer } from './viewers/html-viewer';
 import { MermaidViewer } from './viewers/mermaid-viewer';
 import { AnalystWorkbook } from './viewers/analyst-workbook';
 import { UserStoryViewer } from './viewers/user-story-viewer';
+import { DocumentViewer } from './viewers/document-viewer';
 
 export const ArtifactContainer = () => {
   const { artifacts, activeArtifactId } = useArtifactStore();
@@ -31,6 +32,8 @@ export const ArtifactContainer = () => {
       case 'code':
       case 'json':
         return <CodeViewer content={activeArtifact.content} language={activeArtifact.language || 'text'} />;
+      case 'markdown':
+        return <DocumentViewer content={activeArtifact.content} />;
       default:
         // Fallback for text
         return <CodeViewer content={activeArtifact.content} language="text" />;
@@ -52,7 +55,7 @@ export const ArtifactContainer = () => {
 
       {/* B. Active Viewer Area */}
       <div className="flex-1 overflow-hidden relative">
-         {renderViewer()}
+        {renderViewer()}
       </div>
     </div>
   );

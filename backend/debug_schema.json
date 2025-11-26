@@ -1,0 +1,416 @@
+{
+  "$defs": {
+    "ArtifactType": {
+      "enum": [
+        "code",
+        "markdown",
+        "json",
+        "html",
+        "pdf",
+        "mermaid",
+        "workbook",
+        "stories"
+      ],
+      "title": "ArtifactType",
+      "type": "string"
+    },
+    "ContractArtifact": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/ArtifactType"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "content": {
+          "title": "Content",
+          "type": "string"
+        },
+        "language": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Language"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "title",
+        "content"
+      ],
+      "title": "Artifact",
+      "type": "object"
+    },
+    "ContractUserStory": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "priority": {
+          "$ref": "#/$defs/Priority"
+        },
+        "estimate": {
+          "title": "Estimate",
+          "type": "string"
+        },
+        "role": {
+          "title": "Role",
+          "type": "string"
+        },
+        "action": {
+          "title": "Action",
+          "type": "string"
+        },
+        "benefit": {
+          "title": "Benefit",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        },
+        "goal": {
+          "default": "",
+          "title": "Goal",
+          "type": "string"
+        },
+        "scope": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Scope",
+          "type": "array"
+        },
+        "outOfScope": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Outofscope",
+          "type": "array"
+        },
+        "acceptanceCriteria": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Acceptancecriteria",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "priority",
+        "estimate",
+        "role",
+        "action",
+        "benefit",
+        "scope",
+        "outOfScope",
+        "acceptanceCriteria"
+      ],
+      "title": "UserStory",
+      "type": "object"
+    },
+    "MsgArtifactOpen": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "ARTIFACT_OPEN",
+          "title": "Type",
+          "type": "string"
+        },
+        "payload": {
+          "$ref": "#/$defs/ContractArtifact"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "title": "MsgArtifactOpen",
+      "type": "object"
+    },
+    "MsgArtifactUpdate": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "ARTIFACT_UPDATE",
+          "title": "Type",
+          "type": "string"
+        },
+        "payload": {
+          "$ref": "#/$defs/MsgArtifactUpdatePayload"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "title": "MsgArtifactUpdate",
+      "type": "object"
+    },
+    "MsgArtifactUpdatePayload": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "content": {
+          "title": "Content",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "content"
+      ],
+      "title": "ArtifactUpdatePayload",
+      "type": "object"
+    },
+    "MsgChatDelta": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "CHAT_DELTA",
+          "title": "Type",
+          "type": "string"
+        },
+        "payload": {
+          "title": "Payload",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "title": "MsgChatDelta",
+      "type": "object"
+    },
+    "MsgStatusUpdate": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "STATUS_UPDATE",
+          "title": "Type",
+          "type": "string"
+        },
+        "payload": {
+          "$ref": "#/$defs/StatusUpdatePayload"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "title": "MsgStatusUpdate",
+      "type": "object"
+    },
+    "MsgSuggestionsUpdate": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "SUGGESTIONS_UPDATE",
+          "title": "Type",
+          "type": "string"
+        },
+        "payload": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Payload",
+          "type": "array"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "title": "MsgSuggestionsUpdate",
+      "type": "object"
+    },
+    "Priority": {
+      "enum": [
+        "High",
+        "Medium",
+        "Low"
+      ],
+      "title": "Priority",
+      "type": "string"
+    },
+    "StatusUpdatePayload": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/SystemStatus"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "message"
+      ],
+      "title": "StatusUpdatePayload",
+      "type": "object"
+    },
+    "SystemStatus": {
+      "enum": [
+        "idle",
+        "thinking",
+        "working",
+        "success"
+      ],
+      "title": "SystemStatus",
+      "type": "string"
+    },
+    "UserStoryData": {
+      "additionalProperties": false,
+      "properties": {
+        "stories": {
+          "items": {
+            "$ref": "#/$defs/ContractUserStory"
+          },
+          "title": "Stories",
+          "type": "array"
+        }
+      },
+      "required": [
+        "stories"
+      ],
+      "title": "UserStoryData",
+      "type": "object"
+    },
+    "WebSocketMessage": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MsgStatusUpdate"
+        },
+        {
+          "$ref": "#/$defs/MsgChatDelta"
+        },
+        {
+          "$ref": "#/$defs/MsgSuggestionsUpdate"
+        },
+        {
+          "$ref": "#/$defs/MsgArtifactOpen"
+        },
+        {
+          "$ref": "#/$defs/MsgArtifactUpdate"
+        }
+      ],
+      "title": "WebSocketMessage"
+    },
+    "WorkbookCategory": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "icon": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Icon"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/WorkbookItem"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "items"
+      ],
+      "title": "WorkbookCategory",
+      "type": "object"
+    },
+    "WorkbookData": {
+      "additionalProperties": false,
+      "properties": {
+        "categories": {
+          "items": {
+            "$ref": "#/$defs/WorkbookCategory"
+          },
+          "title": "Categories",
+          "type": "array"
+        }
+      },
+      "required": [
+        "categories"
+      ],
+      "title": "WorkbookData",
+      "type": "object"
+    },
+    "WorkbookItem": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "title": "WorkbookItem",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "websocket_message": {
+      "$ref": "#/$defs/WebSocketMessage"
+    },
+    "user_story_data": {
+      "$ref": "#/$defs/UserStoryData"
+    },
+    "workbook_data": {
+      "$ref": "#/$defs/WorkbookData"
+    }
+  },
+  "required": [
+    "websocket_message",
+    "user_story_data",
+    "workbook_data"
+  ],
+  "title": "FrontendContract",
+  "type": "object"
+}

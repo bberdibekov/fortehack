@@ -1,4 +1,4 @@
-import { type IChatSocket, type WebSocketMessage } from "./websocket-types";
+import { type IChatSocket, type WebSocketMessage } from "@/core/api/types/generated";
 
 export class MockSocketService implements IChatSocket {
   private callback: ((msg: WebSocketMessage) => void) | null = null;
@@ -161,8 +161,8 @@ export class MockSocketService implements IChatSocket {
             type: "SUGGESTIONS_UPDATE",
             payload: [
               "Refine the 'Login' User Story",
-              "Add an Edge Case to the Process Flow",
-              "Export BRD to PDF",
+              "Add an Edge Case to the Process Flow Another very long chip text",
+              "Export BRD to Another very long chip text Another very long chip text Another very long chip text Another very long chip text",
             ],
           });
           setTimeout(() => {

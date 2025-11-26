@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+// UI Components
 import { 
   Accordion, 
   AccordionContent, 
@@ -15,7 +16,9 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/shared/components/ui/select";
+import { GlossaryLabel } from '@/shared/components/glossary-label';
 
+// Icons
 import { 
   Target, 
   CheckSquare, 
@@ -29,7 +32,7 @@ import {
 
 // Logic & State
 import { useArtifactStore } from '@/features/artifacts/stores/artifact-store';
-import { type UserStoryData, type UserStory } from '../../types/user-story-types';
+import { type UserStoryData, type UserStory } from '@/core/api/types/generated';
 import { cn } from '@/shared/utils';
 
 // Sub-components (Editors)
@@ -60,9 +63,14 @@ export const UserStoryViewer = ({ artifactId, content }: UserStoryViewerProps) =
   useEffect(() => {
     try {
       const parsed = JSON.parse(content);
+      // Ensure the stories array exists
+      if (!parsed || !Array.isArray(parsed.stories)) {
+         throw new Error("Missing 'stories' array");
+      }
       setData(parsed);
       setError(null);
     } catch (e) {
+      console.error("Story Parse Error", e);
       setError("Invalid JSON for User Stories");
     }
   }, [content]);
@@ -88,7 +96,8 @@ export const UserStoryViewer = ({ artifactId, content }: UserStoryViewerProps) =
   const addStory = () => {
     if (!data) return;
     const newId = `US-${data.stories.length + 101}`;
-    const newStory: UserStory = {
+    // Using cast for new story to match Schema type
+    const newStory = {
       id: newId,
       priority: 'Medium',
       estimate: '?',
@@ -100,11 +109,21 @@ export const UserStoryViewer = ({ artifactId, content }: UserStoryViewerProps) =
       scope: [],
       outOfScope: [],
       acceptanceCriteria: []
-    };
+    } as UserStory; // Cast required because strict generated type might expect Enums
+
     handleUpdate({ ...data, stories: [newStory, ...data.stories] }); // Add to top
   };
 
-  if (error) return <div className="p-8 text-destructive">{error}</div>;
+  if (error) return (
+    <div className="flex flex-col items-center justify-center h-full text-destructive p-8 text-center bg-destructive/5">
+        <h3 className="font-semibold text-lg mb-1">Failed to load Stories</h3>
+        <p className="text-sm text-muted-foreground">{error}</p>
+        <div className="w-full max-w-md bg-muted/50 p-4 rounded-md border text-left overflow-auto max-h-[200px] mt-4">
+            <code className="text-xs font-mono whitespace-pre-wrap">{content}</code>
+        </div>
+    </div>
+  );
+
   if (!data) return null;
 
   return (
@@ -228,7 +247,10 @@ const StoryCard = ({ story, onUpdate, onDelete }: StoryCardProps) => {
                    <EditableText value={story.action} onSave={(v) => onUpdate({...story, action: v})} />
                </div>
                <div>
-                   <label className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Estimate</label>
+                   <label className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">
+                      {/* Integrated Glossary Tooltip */}
+                      <GlossaryLabel term="estimate">Estimate</GlossaryLabel>
+                   </label>
                    <EditableText value={story.estimate} onSave={(v) => onUpdate({...story, estimate: v})} />
                </div>
            </div>
@@ -240,7 +262,7 @@ const StoryCard = ({ story, onUpdate, onDelete }: StoryCardProps) => {
                  <EditableText 
                     multiline 
                     className="text-sm leading-relaxed" 
-                    value={story.description} 
+                    value={story.description|| ""} 
                     onSave={(v) => onUpdate({...story, description: v})} 
                  />
                  
@@ -255,10 +277,11 @@ const StoryCard = ({ story, onUpdate, onDelete }: StoryCardProps) => {
               </div>
               <div className="space-y-2">
                  <h4 className="text-xs font-semibold uppercase text-muted-foreground flex items-center gap-1">
-                    <Target className="h-3.5 w-3.5" /> Business Goal
+                    <Target className="h-3.5 w-3.5" /> 
+                    <GlossaryLabel term="goal">Business Goal</GlossaryLabel>
                  </h4>
                  <EditableText 
-                    value={story.goal} 
+                    value={story.goal|| ""} 
                     onSave={(v) => onUpdate({...story, goal: v})} 
                     className="font-medium"
                  />
@@ -269,7 +292,8 @@ const StoryCard = ({ story, onUpdate, onDelete }: StoryCardProps) => {
            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card className="p-4 border-emerald-100 dark:border-emerald-900/30 shadow-none bg-emerald-50/30 dark:bg-emerald-900/5">
                  <h4 className="text-xs font-bold uppercase text-emerald-700 dark:text-emerald-400 mb-3 flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4" /> In Scope
+                    <CheckCircle2 className="h-4 w-4" /> 
+                    <GlossaryLabel term="scope">In Scope</GlossaryLabel>
                  </h4>
                  <EditableList 
                     items={story.scope} 
@@ -291,7 +315,8 @@ const StoryCard = ({ story, onUpdate, onDelete }: StoryCardProps) => {
            {/* 4. Acceptance Criteria */}
            <div>
               <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-3 flex items-center gap-2">
-                 <CheckSquare className="h-3.5 w-3.5" /> Acceptance Criteria
+                 <CheckSquare className="h-3.5 w-3.5" /> 
+                 <GlossaryLabel term="acceptance criteria">Acceptance Criteria</GlossaryLabel>
               </h4>
               <EditableList 
                 items={story.acceptanceCriteria} 

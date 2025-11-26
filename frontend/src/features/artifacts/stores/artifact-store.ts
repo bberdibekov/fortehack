@@ -1,18 +1,11 @@
 import { create } from 'zustand';
-
-export interface Artifact {
-  id: string;
-  type: 'code' | 'markdown' | 'json' | 'html' | 'pdf' | 'mermaid' | 'workbook' | 'stories';
-  title: string;
-  content: string;
-  language?: string;
-}
+import { type UIArtifact } from '@/features/artifacts/types/ui-types';
 
 interface ArtifactState {
-  artifacts: Artifact[];
+  artifacts: UIArtifact[];
   activeArtifactId: string | null;
   
-  addArtifact: (artifact: Artifact) => void;
+  addArtifact: (artifact: UIArtifact) => void;
   updateArtifactContent: (id: string, content: string) => void;
   removeArtifact: (id: string) => void;
   setActiveArtifact: (id: string) => void;

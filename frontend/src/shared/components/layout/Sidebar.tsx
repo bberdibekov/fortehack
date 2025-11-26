@@ -85,7 +85,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
 
   // 3. Handlers
   const handleNewChat = () => {
-    // In a real app, you might save before resetting
+    // In prod need to save before resetting
     if (confirm("Start a new chat? This will clear the current session.")) {
       resetChat();
       resetArtifacts();

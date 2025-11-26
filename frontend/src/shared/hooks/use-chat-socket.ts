@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { useChatStore } from "@/features/chat/stores/chat-store";
 import { useArtifactStore } from "@/features/artifacts/stores/artifact-store";
 import { MockSocketService } from "@/core/api/mock-socket";
-import { type IChatSocket } from "@/core/api/websocket-types";
+import { type IChatSocket } from "@/core/api/types/generated";
 
 export const useChatSocket = () => {
   const socketRef = useRef<IChatSocket | null>(null);
@@ -29,7 +29,6 @@ export const useChatSocket = () => {
           }
           break;
         case "SUGGESTIONS_UPDATE":
-          // @ts-ignore - assuming you updated the type definition
           setSuggestions(event.payload);
           break;
       }
@@ -62,7 +61,7 @@ export const useChatSocket = () => {
     }, 100);
 
     // 3. Send to Socket
-    // In a real scenario, you might upload files via HTTP first, get IDs,
+    // In prod need to  upload files via HTTP first, get IDs,
     // and send those IDs along with the text message.
     if (socketRef.current) {
       socketRef.current.sendMessage(content);

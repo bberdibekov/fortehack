@@ -1,18 +1,21 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional, Any, Dict
 import uuid
 
 # --- 1. Sub-Entities ---
 class Persona(BaseModel):
+    model_config = ConfigDict(extra='forbid')
     # Using a name as ID for simplicity in extraction
     role_name: str = Field(..., description="The job title or role, e.g., 'Loan Officer'")
     responsibilities: Optional[str] = Field(None, description="What they do in this process")
 
 class BusinessGoal(BaseModel):
+    model_config = ConfigDict(extra='forbid')
     main_goal: str = Field(..., description="The primary outcome desired")
     success_metrics: List[str] = Field(default_factory=list, description="KPIs or success criteria")
 
 class ProcessStep(BaseModel):
+    model_config = ConfigDict(extra='forbid')
     step_id: int
     description: str
     actor: str = Field(..., description="Who performs this step")
@@ -31,7 +34,7 @@ class ExtractionResult(BaseModel):
 # --- 3. The Source of Truth (The full state) ---
 class SessionState(BaseModel):
     session_id: str
-    chat_history: List[Dict[str, str]] = []
+    chat_history: List[Dict[str, Any]] = []
     
     # The Ledger
     project_scope: Optional[str] = None

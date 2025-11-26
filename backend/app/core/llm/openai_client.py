@@ -8,6 +8,7 @@ from tenacity import retry, stop_after_attempt, wait_random_exponential, retry_i
 from app.config.settings import AppConfig
 from app.core.llm.interface import ILLMClient
 from app.core.llm.exceptions import LLMRefusalError
+from app.core.llm.types import LLMResponse, ToolCallRequest
 from app.utils.logger import setup_logger
 
 logger = setup_logger("LLM_Client")
@@ -92,4 +93,48 @@ class OpenAIClient(ILLMClient):
             return completion.choices[0].message.content
         except Exception as e:
             logger.error(f"❌ LLM Error: {str(e)}")
+            raise e
+        
+    
+    async def chat_with_tools(
+        self, 
+        messages: List[Dict[str, str]], 
+        tools_schema: List[Dict[str, Any]],
+    ) -> LLMResponse:
+        """
+        Implementation of the generic chat_with_tools interface for OpenAI.
+        """
+        params = {
+            "model": self.default_model,
+            "messages": messages,
+            "tools": tools_schema,
+            "tool_choice": "auto",
+        }
+
+        try:
+            logger.info(f"🚀 Calling Chat API with Tools [{params['model']}]")
+            
+            # Using standard chat.completions (not beta.parse for general tools)
+            completion = await self.client.chat.completions.create(**params)
+            
+            message = completion.choices[0].message
+            
+            # --- Convert OpenAI Object to Generic LLMResponse ---
+            response = LLMResponse(
+                content=message.content,
+                role=message.role
+            )
+
+            if message.tool_calls:
+                for tc in message.tool_calls:
+                    response.tool_calls.append(ToolCallRequest(
+                        call_id=tc.id,
+                        function_name=tc.function.name,
+                        arguments=tc.function.arguments
+                    ))
+
+            return response
+
+        except Exception as e:
+            logger.error(f"❌ OpenAI Tool Call Error: {str(e)}")
             raise e
