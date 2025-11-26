@@ -1,18 +1,22 @@
-import { type UserStory, type WorkbookItem, type Artifact } from "@/core/api/types/generated";
+import {
+  type Artifact,
+  type ArtifactSyncStatus,
+  type UserStory,
+  type WorkbookItem,
+} from "@/core/api/types/generated";
 
 // --- UI EXTENSIONS ---
 
-// Artifacts in the store need 'isCollapsed'
 export interface UIArtifact extends Artifact {
   isCollapsed?: boolean;
+  syncStatus?: ArtifactSyncStatus;
+  lastSyncMessage?: string;
 }
 
-// User Stories in the viewer need editing state isNew?
 export interface UIUserStory extends UserStory {
-  isNew?: boolean; 
+  isNew?: boolean;
 }
 
-// Workbook Items need 'isNew' for auto-focus
 export interface UIWorkbookItem extends WorkbookItem {
   isNew?: boolean;
 }

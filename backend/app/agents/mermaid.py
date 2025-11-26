@@ -1,21 +1,22 @@
+# app/agents/mermaid.py
 from app.core.llm.interface import ILLMClient
 from app.domain.models.state import SessionState
 from app.domain.models.artifacts import MermaidArtifact
+from app.core.services.context import system_context # <--- Use the pipeline instance
 
 PROMPT_TEMPLATE = """
 You are a Senior System Architect. 
-Generate a MermaidJS SEQUENCE DIAGRAM based on the current business requirements.
+Generate a MermaidJS SEQUENCE DIAGRAM based on the provided Context.
 
-CURRENT STATE:
-Project Scope: {scope}
-Actors: {actors}
-Process Steps: {steps}
+{context_block}
 
 RULES:
 1. Use 'sequenceDiagram' type.
-2. Use safe node names (no spaces, use underscores).
-3. If no steps are defined yet, create a placeholder diagram showing the Actors.
-4. Return ONLY valid Mermaid syntax.
+2. FIRST, declare ALL 'DEFINED ACTORS' using `participant Name` at the top of the file.
+   - Do this even if they have no steps in the 'PROCESS FLOW' yet.
+3. Then, map the 'PROCESS FLOW' to arrows (->>).
+4. Use safe node names (no spaces, use underscores).
+5. Return ONLY valid Mermaid syntax.
 """
 
 class MermaidAgent:
@@ -23,19 +24,12 @@ class MermaidAgent:
         self.llm = llm_client
 
     async def generate(self, state: SessionState) -> MermaidArtifact:
-        # 1. Serialize State for the LLM
-        # We only pass what matters to the diagram
-        context_str = f"""
-        Scope: {state.project_scope or "Undefined"}
-        Actors: {', '.join([a.role_name for a in state.actors]) if state.actors else "None"}
-        Steps: {state.process_steps}
-        """
+        # 1. Build Dynamic Context
+        context_str = system_context.build(state)
 
         messages = [
             {"role": "system", "content": PROMPT_TEMPLATE.format(
-                scope=state.project_scope,
-                actors=str([a.role_name for a in state.actors]),
-                steps=str(state.process_steps)
+                context_block=context_str
             )}
         ]
 

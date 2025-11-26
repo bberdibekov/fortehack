@@ -11,7 +11,7 @@ from app.schemas.contract import (
     MsgChatDelta, MsgStatusUpdate, MsgArtifactOpen, 
     MsgStateUpdate, MsgValidationWarn, MsgArtifactUpdate,
     StatusUpdatePayload, SystemStatus, ContractStateSnapshot,
-    ValidationWarnPayload, ValidationIssue, MsgArtifactUpdatePayload
+    ValidationWarnPayload, ValidationIssue, MsgArtifactUpdatePayload, MsgArtifactSync, ArtifactSyncPayload
 )
 
 class DomainMapper:
@@ -119,4 +119,15 @@ class DomainMapper:
         return MsgValidationWarn(
             type='VALIDATION_WARN',
             payload=ValidationWarnPayload(issues=contract_issues, safety_score=score)
+        ).model_dump(by_alias=True)
+    
+    @staticmethod
+    def to_artifact_sync(doc_id: str, status: str, message: str = "") -> Dict[str, Any]:
+        return MsgArtifactSync(
+            type='ARTIFACT_SYNC_EVENT',
+            payload=ArtifactSyncPayload(
+                id=doc_id,
+                status=status,
+                message=message
+            )
         ).model_dump(by_alias=True)

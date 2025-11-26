@@ -7,15 +7,26 @@ export type WebSocketMessage =
   | MsgArtifactOpen
   | MsgArtifactUpdate
   | MsgStateUpdate
-  | MsgValidationWarn;
+  | MsgValidationWarn
+  | MsgArtifactSync;
 export type SystemStatus = "idle" | "thinking" | "working" | "success";
-export type ArtifactType = "code" | "markdown" | "json" | "html" | "pdf" | "mermaid" | "workbook" | "stories";
+export type ArtifactType =
+  | "code"
+  | "markdown"
+  | "json"
+  | "html"
+  | "pdf"
+  | "mermaid"
+  | "workbook"
+  | "stories";
 export type Language = string | null;
 export type Projectscope = string | null;
 export type Responsibilities = string | null;
 export type Actors = Persona[];
 export type Processsteps = ProcessStep[];
 export type Issues = ValidationIssue[];
+export type ArtifactSyncStatus = "saving" | "processing" | "synced" | "error";
+export type Message = string | null;
 export type Priority = "High" | "Medium" | "Low";
 export type Stories = UserStory[];
 export type Icon = string | null;
@@ -102,7 +113,17 @@ export interface ValidationWarnPayload {
 }
 export interface ValidationIssue {
   severity: string;
+  category?: string;
   message: string;
+}
+export interface MsgArtifactSync {
+  type: "ARTIFACT_SYNC_EVENT";
+  payload: ArtifactSyncPayload;
+}
+export interface ArtifactSyncPayload {
+  id: string;
+  status: ArtifactSyncStatus;
+  message?: string;
 }
 export interface UserStoryData {
   stories: Stories;

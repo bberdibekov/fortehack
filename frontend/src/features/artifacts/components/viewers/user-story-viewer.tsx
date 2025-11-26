@@ -1,4 +1,3 @@
-// src/features/artifacts/components/viewers/user-story-viewer.tsx
 import { useState, useEffect } from 'react';
 import { Accordion } from "@/shared/components/ui/accordion";
 import { Button } from "@/shared/components/ui/button";
@@ -8,6 +7,7 @@ import { Plus } from 'lucide-react';
 import { useArtifactStore } from '@/features/artifacts/stores/artifact-store';
 import { type UserStoryData, type UserStory } from '@/core/api/types/generated';
 import { useChatSocket } from '@/shared/hooks/use-chat-socket'; 
+import { useDebouncedCallback } from '@/shared/hooks/use-debounce';
 
 // Sub-components
 import { StoryCard } from './stories/story-card';
@@ -19,11 +19,24 @@ interface UserStoryViewerProps {
 }
 
 export const UserStoryViewer = ({ artifactId, content }: UserStoryViewerProps) => {
-  const { updateArtifactContent } = useArtifactStore();
+  // Destructure the new action setArtifactSyncStatus
+  const { updateArtifactContent, setArtifactSyncStatus } = useArtifactStore();
   const { saveArtifact } = useChatSocket(); 
+  
   const [data, setData] = useState<UserStoryData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // 1. Debounced Save Logic
+  // This prevents spamming the WebSocket with every keystroke.
+  const debouncedSave = useDebouncedCallback((id: string, jsonString: string) => {
+      // Optimistic Update: Tell the UI we are saving right now
+      setArtifactSyncStatus(id, 'saving');
+      
+      // Send the payload
+      saveArtifact(id, jsonString);
+  }, 1000);
+
+  // 2. Parse Content (Initial Load & External Updates)
   useEffect(() => {
     try {
       const parsed = JSON.parse(content);
@@ -38,13 +51,20 @@ export const UserStoryViewer = ({ artifactId, content }: UserStoryViewerProps) =
     }
   }, [content]);
 
-  // Sync Logic
+  // 3. Central Update Handler
   const handleUpdate = (newData: UserStoryData) => {
+    // A. Immediate Local Update (Fast UI response)
     setData(newData);
     const jsonString = JSON.stringify(newData, null, 2);
+    
+    // B. Sync to Zustand Store (Keeps tabs consistent if switched)
     updateArtifactContent(artifactId, jsonString);
-    saveArtifact("stories", jsonString);
+
+    // C. Sync to Backend (Debounced to save network/DB)
+    debouncedSave(artifactId, jsonString);
   };
+
+  // --- CRUD Actions ---
 
   const updateStory = (updatedStory: UserStory) => {
     if (!data) return;
@@ -61,6 +81,8 @@ export const UserStoryViewer = ({ artifactId, content }: UserStoryViewerProps) =
   const addStory = () => {
     if (!data) return;
     const newId = `US-${data.stories.length + 101}`;
+    
+    // Default Template
     const newStory = {
       id: newId,
       priority: 'Medium',
@@ -78,6 +100,8 @@ export const UserStoryViewer = ({ artifactId, content }: UserStoryViewerProps) =
     handleUpdate({ ...data, stories: [newStory, ...data.stories] });
   };
 
+  // --- Render ---
+
   if (error) return (
     <div className={styles.ERROR_CONTAINER_CLASSES}>
         <h3 className="font-semibold text-lg mb-1">Failed to load Stories</h3>
@@ -93,6 +117,8 @@ export const UserStoryViewer = ({ artifactId, content }: UserStoryViewerProps) =
   return (
     <div className={styles.VIEWER_WRAPPER_CLASSES}>
       <div className={styles.CONTENT_WRAPPER_CLASSES}>
+        
+        {/* Header & Controls */}
         <div className={styles.HEADER_CONTROLS_CLASSES}>
           <div>
             <h1 className={styles.VIEWER_TITLE_CLASSES}>User Stories</h1>
@@ -103,6 +129,7 @@ export const UserStoryViewer = ({ artifactId, content }: UserStoryViewerProps) =
           </Button>
         </div>
 
+        {/* Story List */}
         <Accordion type="single" collapsible className={styles.ACCORDION_WRAPPER_CLASSES}>
           {data.stories.map((story) => (
             <StoryCard 

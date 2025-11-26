@@ -2,7 +2,7 @@
 import asyncio
 import json
 import traceback
-from typing import Callable, Dict, Any, Awaitable
+from typing import Callable, Dict, Any, Awaitable, List
 
 from app.config.settings import AgentConfig
 from app.core.llm.interface import ILLMClient
@@ -27,6 +27,12 @@ from app.infrastructure.knowledge.local_store import LocalPolicyStore
 from app.core.tools.base import ToolContext
 from app.core.tools.registry import ToolRegistry
 from app.core.tools.definitions import UpdateRequirementsTool, TriggerVisualizationTool
+
+# Validation & Context
+from app.core.services.validator import ConsistencyValidator
+from app.domain.models.validation import ComplianceIssue
+
+from app.core.services.edit_strategies import EditStrategyFactory
 
 # Prompts
 from app.core.llm.prompts.system_manager import SYSTEM_MANAGER_PROMPT
@@ -56,11 +62,19 @@ class Orchestrator:
         self.mermaid_agent = MermaidAgent(self.groq_client)
         self.analyst_agent = AnalystAgent(self.groq_client)
 
-        # --- STRATEGY PATTERN REGISTRY ---
-        # Maps artifact_type string -> Async Function that takes State and returns a Pydantic Model
+        # --- STRATEGY PATTERN: GENERATORS ---
+        # Maps artifact_type -> Async Generator Function
         self.artifact_generators: Dict[str, Callable[[SessionState], Awaitable[Any]]] = {
             "mermaid_diagram": self.mermaid_agent.generate,
             "user_story": self.analyst_agent.generate_stories,
+        }
+
+        # --- STRATEGY PATTERN: VALIDATORS ---
+        # Maps artifact_type -> Sync Validator Function
+        # Signature: (content_dict, state) -> List[ComplianceIssue]
+        self.artifact_validators: Dict[str, Callable[[Dict, SessionState], List[ComplianceIssue]]] = {
+            "mermaid_diagram": ConsistencyValidator.validate_mermaid,
+            "user_story": ConsistencyValidator.validate_stories
         }
 
         self.tasks: Dict[str, asyncio.Task] = {}
@@ -180,6 +194,61 @@ class Orchestrator:
                 del self.tasks[artifact_type]
         new_task.add_done_callback(_cleanup)
 
+    async def handle_artifact_edit(self, doc_id: str, new_content: Any):
+        """
+        Handles manual user edits to an artifact.
+        
+        Args:
+            doc_id: The 'wire_id' known to frontend (e.g., 'mermaid_diagram')
+            new_content: The raw modified data
+        """
+        # 1. Acknowledge Receipt (Processing)
+        await self.emit_mapped(DomainMapper.to_artifact_sync(doc_id, "processing", "Validating..."))
+        
+        try:
+            state = await self.state_manager.get_or_create_session(self.session_id)
+
+            # 2. Identify the Internal Target
+            # The frontend sends 'mermaid_diagram'. We need to find the LATEST version of that.
+            # We assume 'doc_id' maps directly to 'artifact_type' in our current mapping logic.
+            artifact_type = doc_id 
+            current_version = state.artifact_counters.get(artifact_type, 0)
+            
+            if current_version == 0:
+                # Edge case: User edits something that doesn't exist yet?
+                # We initialize it as v1
+                current_version = 1
+                state.artifact_counters[artifact_type] = 1
+
+            internal_id = f"{artifact_type}-v{current_version}"
+
+            # 3. Validate & Parse (Strategy Pattern)
+            strategy = EditStrategyFactory.get_strategy(artifact_type)
+            parsed_content = strategy.validate_and_parse(new_content)
+
+            # 4. Save to State (Current State Logic)
+            state.artifacts[internal_id] = parsed_content
+            
+            # TODO: Add 'User Locked' flag here if we want to prevent overwrite
+            # state.locked_artifacts.add(artifact_type) 
+            
+            await self.state_manager.save_session(state)
+
+            # 5. Success Response
+            await self.emit_mapped(DomainMapper.to_artifact_sync(doc_id, "synced", "Saved"))
+            print(f"✏️  User Edited {internal_id}")
+
+        except ValueError as ve:
+            # Logic Error (Validation)
+            print(f"⚠️ Edit Validation Failed: {ve}")
+            await self.emit_mapped(DomainMapper.to_artifact_sync(doc_id, "error", str(ve)))
+            
+        except Exception as e:
+            # System Error
+            print(f"🔥 Edit Handler Failed: {e}")
+            traceback.print_exc()
+            await self.emit_mapped(DomainMapper.to_artifact_sync(doc_id, "error", "Internal Server Error"))
+    
     async def _run_artifact_generator(self, artifact_type: str):
         # STRICT MAPPING: Status Update
         await self.emit_mapped(DomainMapper.to_status_update("working", f"Generating {artifact_type}..."))
@@ -192,12 +261,21 @@ class Orchestrator:
 
             state = await self.state_manager.get_or_create_session(self.session_id)
             
+            # 1. EXECUTION
             result_model = await generator_func(state)
             new_content = result_model.model_dump()
             
+            # 2. DYNAMIC VALIDATION (The "Reviewer")
+            validator_func = self.artifact_validators.get(artifact_type)
+            if validator_func and new_content:
+                issues = validator_func(new_content, state)
+                if issues:
+                    # Emit warnings so user knows context was ignored
+                    warn_payload = DomainMapper.to_validation_warn(issues, score=90)
+                    await self.emit_mapped(warn_payload)
+            
+            # 3. Persistence & Versioning Phase
             if new_content:
-                # 3. Persistence & Versioning (INTERNAL)
-                # We keep this for our own safety/undo history
                 current_version = state.artifact_counters.get(artifact_type, 0)
                 new_version = current_version + 1
                 state.artifact_counters[artifact_type] = new_version
@@ -208,10 +286,8 @@ class Orchestrator:
                 
                 # 4. Emission (EXTERNAL)
                 try:
-                    # STABLE ID for Frontend (forces rewrite of same tab)
                     wire_id = artifact_type 
                     
-                    # A. Force Update (Rewrites content if tab exists)
                     update_payload = DomainMapper.to_artifact_update(
                         artifact_type, 
                         new_content, 
@@ -219,7 +295,6 @@ class Orchestrator:
                     )
                     await self.emit_mapped(update_payload)
 
-                    # B. Ensure Open (Opens tab if closed, or focuses if open)
                     open_payload = DomainMapper.to_artifact_open(
                         artifact_type, 
                         new_content, 

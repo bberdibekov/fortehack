@@ -53,7 +53,17 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                 
             elif event_type == "ARTIFACT_EDIT":
                 # Handle edits
-                pass
+                try:
+                    payload = data.get("payload", {})
+                    doc_id = payload.get("id")
+                    content = payload.get("content")
+                    
+                    if doc_id and content:
+                        await engine.handle_artifact_edit(doc_id, content)
+                    else:
+                        print("⚠️ Invalid ARTIFACT_EDIT payload")
+                except Exception as e:
+                    print(f"Error handling edit: {e}")
 
     except WebSocketDisconnect:
         print(f"Client {client_id} disconnected")

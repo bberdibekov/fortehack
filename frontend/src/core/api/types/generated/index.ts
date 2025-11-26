@@ -1,20 +1,23 @@
-import * as Schema from './schema';
+import * as Schema from "./schema";
 
 // --- 1. Re-export Domain Types ---
-export type { 
-  SystemStatus, 
-  Priority, 
-  ArtifactType,
+export type {
   Artifact,
+  ArtifactSyncPayload,
+  ArtifactSyncStatus,
+  ArtifactType,
+  MsgArtifactSync,
+  Priority,
+  SystemStatus,
   UserStory,
   UserStoryData,
-  WorkbookData,
   WorkbookCategory,
-  WorkbookItem 
-} from './schema';
+  WorkbookData,
+  WorkbookItem,
+} from "./schema";
 
 // --- 2. Clean up WebSocket Message Type ---
-export type { WebSocketMessage } from './schema';
+export type { WebSocketMessage } from "./schema";
 
 // --- 3. Add the Socket Interface ---
 // Since the generator defines Data, not Behavior, we define the Interface here

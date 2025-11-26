@@ -173,6 +173,24 @@ class MsgValidationWarn(CamelModel):
     type: Literal['VALIDATION_WARN']
     payload: ValidationWarnPayload
 
+
+class ArtifactSyncStatus(str, Enum):
+    SAVING = 'saving'
+    PROCESSING = 'processing'
+    SYNCED = 'synced'
+    ERROR = 'error'
+
+class ArtifactSyncPayload(CamelModel):
+    model_config = ConfigDict(title="ArtifactSyncPayload")
+    id: str
+    status: ArtifactSyncStatus
+    message: Optional[str] = None
+
+class MsgArtifactSync(CamelModel):
+    model_config = ConfigDict(title="MsgArtifactSync")
+    type: Literal['ARTIFACT_SYNC_EVENT']
+    payload: ArtifactSyncPayload
+
 # --- ROOT UNION (Exported as WebSocketMessage) ---
 
 class WebSocketMessage(RootModel):
@@ -183,9 +201,13 @@ class WebSocketMessage(RootModel):
         MsgSuggestionsUpdate,
         MsgArtifactOpen,
         MsgArtifactUpdate,
-        MsgStateUpdate,    # New
-        MsgValidationWarn  # New
+        MsgStateUpdate,
+        MsgValidationWarn,
+        MsgArtifactSync
     ]
+
+
+
 
 # --- CONTAINER (For Generation Script) ---
 
