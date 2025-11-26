@@ -9,14 +9,15 @@ from app.core.services.artifact_strategies import ArtifactStrategyFactory
 from app.domain.models.state import SessionState
 from app.schemas.contract import (
     MsgChatDelta, MsgStatusUpdate, MsgArtifactOpen, 
-    MsgStateUpdate, MsgValidationWarn,
+    MsgStateUpdate, MsgValidationWarn, MsgArtifactUpdate,
     StatusUpdatePayload, SystemStatus, ContractStateSnapshot,
-    ValidationWarnPayload, ValidationIssue
+    ValidationWarnPayload, ValidationIssue, MsgArtifactUpdatePayload
 )
 
 class DomainMapper:
     """
     Central Translation Layer.
+    Converts Internal Domain Objects -> External Contract Messages (Strictly Typed).
     """
 
     # --- 1. Basic Messages ---
@@ -43,17 +44,37 @@ class DomainMapper:
     # --- 2. Artifacts (STRATEGY PATTERN) ---
 
     @staticmethod
-    def to_artifact_open(artifact_type: str, content: Any) -> Dict[str, Any]:
+    def to_artifact_open(artifact_type: str, content: Any, doc_id: str) -> Dict[str, Any]:
         """
         Delegates content formatting to the specific strategy.
+        Used to OPEN a tab.
         """
         strategy = ArtifactStrategyFactory.get_strategy(artifact_type)
-        unique_id = f"artifact-{artifact_type}"
-        contract_artifact = strategy.map(content, doc_id=unique_id)
+        
+        # Map content to the Contract Schema using the provided ID
+        contract_artifact = strategy.map(content, doc_id=doc_id)
         
         return MsgArtifactOpen(
             type='ARTIFACT_OPEN',
             payload=contract_artifact
+        ).model_dump(by_alias=True)
+
+    @staticmethod
+    def to_artifact_update(artifact_type: str, content: Any, doc_id: str) -> Dict[str, Any]:
+        """
+        Maps content to a strict ARTIFACT_UPDATE message.
+        Used to force-refresh content in an existing tab.
+        """
+        # We reuse the strategy to get the formatted 'content' string/json
+        strategy = ArtifactStrategyFactory.get_strategy(artifact_type)
+        contract_artifact = strategy.map(content, doc_id=doc_id)
+        
+        return MsgArtifactUpdate(
+            type='ARTIFACT_UPDATE',
+            payload=MsgArtifactUpdatePayload(
+                id=doc_id,
+                content=contract_artifact.content # Extract just the string content
+            )
         ).model_dump(by_alias=True)
 
     # --- 3. New Events (State & Validation) ---

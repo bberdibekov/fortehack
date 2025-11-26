@@ -1,7 +1,8 @@
 # app/core/orchestrator.py
 import asyncio
 import json
-from typing import Callable, Dict, Any
+import traceback
+from typing import Callable, Dict, Any, Awaitable
 
 from app.config.settings import AgentConfig
 from app.core.llm.interface import ILLMClient
@@ -16,6 +17,7 @@ from app.agents.checker import CheckerAgent
 from app.agents.mermaid import MermaidAgent
 from app.agents.analyst import AnalystAgent
 from app.core.services.mapper import DomainMapper
+from app.domain.models.state import SessionState
 
 # Persistence & RAG
 from app.core.interfaces.repository import ISessionRepository
@@ -28,7 +30,6 @@ from app.core.tools.definitions import UpdateRequirementsTool, TriggerVisualizat
 
 # Prompts
 from app.core.llm.prompts.system_manager import SYSTEM_MANAGER_PROMPT
-import traceback
 
 
 class Orchestrator:
@@ -55,6 +56,13 @@ class Orchestrator:
         self.mermaid_agent = MermaidAgent(self.groq_client)
         self.analyst_agent = AnalystAgent(self.groq_client)
 
+        # --- STRATEGY PATTERN REGISTRY ---
+        # Maps artifact_type string -> Async Function that takes State and returns a Pydantic Model
+        self.artifact_generators: Dict[str, Callable[[SessionState], Awaitable[Any]]] = {
+            "mermaid_diagram": self.mermaid_agent.generate,
+            "user_story": self.analyst_agent.generate_stories,
+        }
+
         self.tasks: Dict[str, asyncio.Task] = {}
 
         # 4. Tool Registry
@@ -68,11 +76,6 @@ class Orchestrator:
 
     async def emit_mapped(self, message_dict: Dict[str, Any]):
         """Helper to emit strictly typed messages from Mapper."""
-        
-        if message_dict["type"] == "ARTIFACT_OPEN":
-            import json
-            print(f"📦 SENDING ARTIFACT: {json.dumps(message_dict, indent=2)}")
-        
         await self.emit(message_dict["type"], message_dict["payload"])
 
     async def handle_user_message(self, message: str):
@@ -83,7 +86,7 @@ class Orchestrator:
         # Notify UI that we are working
         await self.emit_mapped(DomainMapper.to_status_update("thinking", "Processing..."))
         
-        tool_context = ToolContext(state, self.emit, self.services) # Pass raw emit to tools (they use mapper internally if needed)
+        tool_context = ToolContext(state, self.emit, self.services) # Pass raw emit to tools
         
         messages = [{"role": "system", "content": SYSTEM_MANAGER_PROMPT}] + state.chat_history
         tools_schema = self.registry.get_schemas()
@@ -182,34 +185,61 @@ class Orchestrator:
         await self.emit_mapped(DomainMapper.to_status_update("working", f"Generating {artifact_type}..."))
         
         try:
-            state = await self.state_manager.get_or_create_session(self.session_id)
-            new_content = None
-            
-            if artifact_type == "mermaid_diagram":
-                result = await self.mermaid_agent.generate(state)
-                new_content = result.dict()
-            elif artifact_type == "user_story":
-                result = await self.analyst_agent.generate_stories(state)
-                new_content = result.dict()
+            generator_func = self.artifact_generators.get(artifact_type)
+            if not generator_func:
+                print(f"⚠️ No generator registered for: {artifact_type}")
+                return
 
+            state = await self.state_manager.get_or_create_session(self.session_id)
+            
+            result_model = await generator_func(state)
+            new_content = result_model.model_dump()
+            
             if new_content:
-                # 2. PERSISTENCE PHASE
-                state.artifacts[artifact_type] = new_content
+                # 3. Persistence & Versioning (INTERNAL)
+                # We keep this for our own safety/undo history
+                current_version = state.artifact_counters.get(artifact_type, 0)
+                new_version = current_version + 1
+                state.artifact_counters[artifact_type] = new_version
+                
+                internal_id = f"{artifact_type}-v{new_version}"
+                state.artifacts[internal_id] = new_content
                 await self.state_manager.save_session(state)
                 
-                # 3. MAPPING PHASE (Most likely failure point for complex objects)
+                # 4. Emission (EXTERNAL)
                 try:
-                    event_payload = DomainMapper.to_artifact_open(artifact_type, new_content)
-                    await self.emit_mapped(event_payload)
+                    # STABLE ID for Frontend (forces rewrite of same tab)
+                    wire_id = artifact_type 
+                    
+                    # A. Force Update (Rewrites content if tab exists)
+                    update_payload = DomainMapper.to_artifact_update(
+                        artifact_type, 
+                        new_content, 
+                        doc_id=wire_id
+                    )
+                    await self.emit_mapped(update_payload)
+
+                    # B. Ensure Open (Opens tab if closed, or focuses if open)
+                    open_payload = DomainMapper.to_artifact_open(
+                        artifact_type, 
+                        new_content, 
+                        doc_id=wire_id
+                    )
+                    await self.emit_mapped(open_payload)
+
                     await self.emit_mapped(DomainMapper.to_status_update("success", f"Generated {artifact_type}"))
-                    print(f"✅ Generator FINISHED: {artifact_type}")
+                    print(f"✅ Generator FINISHED: {internal_id} -> Wire: {wire_id}")
+                    
                 except Exception as map_err:
                     print(f"🔥 MAPPING ERROR for {artifact_type}: {map_err}")
                     traceback.print_exc()
-                    raise map_err # Re-raise to trigger outer catch
+                    raise map_err 
                 
         except asyncio.CancelledError:
-            pass
+            print(f"🛑 Generator Cancelled: {artifact_type}")
         except Exception as e:
             print(f"❌ Generator Failed: {e}")
             await self.emit_mapped(DomainMapper.to_status_update("idle", f"Failed to generate {artifact_type}"))
+            traceback.print_exc()
+        finally:
+            await self.emit_mapped(DomainMapper.to_status_update("idle", "Ready"))

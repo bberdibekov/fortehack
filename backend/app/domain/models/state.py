@@ -1,6 +1,6 @@
+# app/domain/models/state.py
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional, Any, Dict
-import uuid
 
 # --- 1. Sub-Entities ---
 class Persona(BaseModel):
@@ -42,5 +42,13 @@ class SessionState(BaseModel):
     goal: Optional[BusinessGoal] = None
     process_steps: List[ProcessStep] = []
     
-    # Artifacts (Mermaid, etc.)
+    # Artifacts Storage
+    # Key: The Versioned ID (e.g., 'mermaid_diagram-v1', 'user_story-v3')
+    # Value: The content dict (raw output from agent)
     artifacts: Dict[str, Any] = {}
+
+    # Sequence Counters (For Versioning)
+    # Key: Artifact Type (e.g., 'mermaid_diagram')
+    # Value: Latest Version Integer (e.g., 1)
+    # This guarantees we never reuse an ID or overwrite history.
+    artifact_counters: Dict[str, int] = {}
