@@ -1,13 +1,29 @@
 import { type IChatSocket, type WebSocketMessage } from "@/core/api/types/generated";
 
 export class LiveSocketService implements IChatSocket {
+  private static instance: LiveSocketService;
   private ws: WebSocket | null = null;
   private url: string = "";
-  private callback: ((msg: WebSocketMessage) => void) | null = null;
-  private reconnectTimer: any = null;
+  // Observer pattern: Allow multiple parts of the app to listen if needed
+  private listeners: ((msg: WebSocketMessage) => void)[] = [];
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private isExplicitDisconnect = false;
 
+  // Singleton Accessor
+  public static getInstance(): LiveSocketService {
+    if (!LiveSocketService.instance) {
+      LiveSocketService.instance = new LiveSocketService();
+    }
+    return LiveSocketService.instance;
+  }
+
   connect(url: string) {
+    // Prevent double connections if already connected/connecting
+    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+        console.log("⚡ Socket already connected or connecting.");
+        return;
+    }
+
     this.url = url;
     this.isExplicitDisconnect = false;
     
@@ -25,8 +41,8 @@ export class LiveSocketService implements IChatSocket {
     this.ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        // Pass directly to the app's handler
-        if (this.callback) this.callback(data);
+        // Broadcast to all listeners
+        this.listeners.forEach(listener => listener(data));
       } catch (err) {
         console.error("❌ Failed to parse WebSocket message:", err);
       }
@@ -58,7 +74,6 @@ export class LiveSocketService implements IChatSocket {
     this.send("USER_MESSAGE", text);
   }
 
-  // Generic helper to send any event type (used for edits)
   send(type: string, payload: any) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify({ type, payload }));
@@ -67,7 +82,15 @@ export class LiveSocketService implements IChatSocket {
     }
   }
 
+  // Updated to support multiple listeners
   onMessage(callback: (msg: WebSocketMessage) => void) {
-    this.callback = callback;
+    this.listeners.push(callback);
+    // Return unsubscribe function
+    return () => {
+        this.listeners = this.listeners.filter(l => l !== callback);
+    };
   }
 }
+
+// Export the singleton instance helper
+export const socketService = LiveSocketService.getInstance();

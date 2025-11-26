@@ -5,6 +5,7 @@ import {
 } from "@/shared/components/ui/resizable";
 import { Sidebar } from '@/shared/components/layout/Sidebar';
 import { useUIStore } from '@/core/store/ui-store';
+import { useSocketEvents } from '@/shared/hooks/use-socket-events'; // <-- IMPORT
 import { 
   Maximize2, 
   Columns, 
@@ -18,6 +19,10 @@ import { CommandMenu } from '@/shared/components/command-menu';
 export const MainLayout = () => {
   const { layoutMode, setLayoutMode } = useUIStore();
 
+  // --- ACTIVATE SOCKET LISTENER ---
+  // This ensures connection is created once and events are handled globally.
+  useSocketEvents(); 
+  // --------------------------------
 
   const ArtifactHeader = ({ isFullscreen }: { isFullscreen: boolean }) => (
     <div className="flex-none h-12 border-b flex items-center justify-between px-4 bg-muted/10">
