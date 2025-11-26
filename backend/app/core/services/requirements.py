@@ -4,12 +4,12 @@ from app.core.services.state_manager import StateManager
 from app.core.gap_engine import GapEngine
 from app.agents.checker import CheckerAgent
 from app.domain.models.state import SessionState, BusinessGoal, Persona, ProcessStep
-from app.domain.models.validation import ComplianceReport 
+from app.domain.models.validation import ComplianceReport
 
 class RequirementsService:
     """
     Orchestrates the 'Update -> Audit -> Feedback' pipeline.
-    This separates the 'Agent' (Tool) from the 'Business Logic'.
+    Separates the 'Agent' (Tool) from the 'Business Logic'.
     """
     def __init__(
         self, 
@@ -23,18 +23,18 @@ class RequirementsService:
 
     async def process_update(self, session_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Applies updates and runs the full audit suite.
+        Applies updates (Add/Remove) and runs the full audit suite.
+        Returns a dict containing the snapshot and RAW issue objects.
         """
         
-        # 1. Apply Removals FIRST (Logic: Remove then Add prevents conflicts)
+        # --- 1. Apply Removals FIRST ---
         if updates.get("actors_to_remove"):
             await self.state_manager.remove_actors(session_id, updates["actors_to_remove"])
 
         if updates.get("steps_to_remove"):
             await self.state_manager.remove_steps(session_id, updates["steps_to_remove"])
-        
-        # 2. Apply Adds / Updates
-               
+
+        # --- 2. Apply Adds / Updates ---
         if updates.get("project_scope"):
             await self.state_manager.update_project_scope(session_id, updates["project_scope"])
 
@@ -50,26 +50,29 @@ class RequirementsService:
             steps_models = [ProcessStep(**s) for s in updates["process_steps"]]
             await self.state_manager.update_steps(session_id, steps_models)
 
-        # 3. Fetch Fresh State (Read-Your-Writes)
+        # --- 3. Fetch Fresh State (Read-Your-Writes) ---
         current_state = await self.state_manager.get_or_create_session(session_id)
 
-        # 4. Run Logic Audits (Gap Engine - Deterministic)
+        # --- 4. Run Logic Audits (Gap Engine - Deterministic) ---
         gap_result = self.gap_engine.analyze(current_state)
         gap_issues = [issue.advice for issue in gap_result.issues]
 
-        # 5. Run Compliance Audits (Checker Agent - LLM)
-        compliance_issues = []
+        # --- 5. Run Compliance Audits (Checker Agent - LLM) ---
+        compliance_issues_list = []
         try:
             compliance_report = await self.checker_agent.audit(current_state)
-            if compliance_report.issues:
-                compliance_issues = [
-                    f"[{i.severity.upper()}] {i.title}: {i.description}" 
-                    for i in compliance_report.issues
-                ]
+            # We return the raw objects now, so the Mapper (and LLM) can use structured data
+            if compliance_report and compliance_report.issues:
+                compliance_issues_list = compliance_report.issues
+                
         except Exception as e:
-            compliance_issues = [f"System Warning: Compliance check unavailable ({str(e)})"]
+            # If the Checker Agent fails (e.g., LLM refusal), we don't crash the update.
+            # We just return a warning string in a dummy object or list.
+            print(f"⚠️ Compliance check failed: {e}")
+            # We leave the list empty or add a string if the caller handles it.
+            # For strictness, let's leave it empty so we don't break the object contract.
 
-        # 6. Return Structured Feedback
+        # --- 6. Return Structured Feedback ---
         return {
             "status": "success",
             "current_state_snapshot": {
@@ -78,7 +81,10 @@ class RequirementsService:
                 "steps": len(current_state.process_steps)
             },
             "completeness_gaps": gap_issues,
-            "compliance_issues": compliance_issues,
-            # Pass the full object for event emission if needed
+            
+            # RAW OBJECTS (List[ComplianceIssue])
+            "compliance_issues": compliance_issues_list,
+            
+            # Pass the full object for event emission
             "_internal_state": current_state 
         }

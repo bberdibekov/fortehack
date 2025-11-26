@@ -115,7 +115,10 @@ class ContractStateSnapshot(CamelModel):
 
 class ValidationIssue(CamelModel):
     model_config = ConfigDict(title="ValidationIssue")
-    severity: str # e.g. "critical", "high", "medium"
+    severity: str 
+    # We relax this to str in the Contract to prevent serialization errors
+    # The Frontend will type it as string, which is safe.
+    category: str = "policy" 
     message: str
 
 class ValidationWarnPayload(CamelModel):

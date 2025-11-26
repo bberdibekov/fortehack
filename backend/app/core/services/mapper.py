@@ -48,7 +48,8 @@ class DomainMapper:
         Delegates content formatting to the specific strategy.
         """
         strategy = ArtifactStrategyFactory.get_strategy(artifact_type)
-        contract_artifact = strategy.map(content, doc_id="artifact-latest")
+        unique_id = f"artifact-{artifact_type}"
+        contract_artifact = strategy.map(content, doc_id=unique_id)
         
         return MsgArtifactOpen(
             type='ARTIFACT_OPEN',
@@ -72,25 +73,29 @@ class DomainMapper:
         ).model_dump(by_alias=True)
 
     @staticmethod
-    def to_validation_warn(issues: List[str], score: int = 100) -> Dict[str, Any]:
+    def to_validation_warn(issues: List[Any], score: int = 100) -> Dict[str, Any]:
         """
-        Maps list of issue strings -> Structured Validation Payload
+        Maps list of Internal ComplianceIssue objects -> Contract ValidationWarnPayload
         """
-        # Convert strings to objects (simplistic mapping, strictly speaking 
-        # the checker should return objects, but we handle the string list here)
-        issue_objs = []
-        for i_str in issues:
-            # Basic parsing if string contains severity like "[CRITICAL] ..."
-            severity = "medium"
-            msg = i_str
-            if "[" in i_str and "]" in i_str:
-                end = i_str.find("]")
-                severity = i_str[1:end].lower()
-                msg = i_str[end+1:].strip()
-                
-            issue_objs.append(ValidationIssue(severity=severity, message=msg))
+        contract_issues = []
+        
+        for issue in issues:
+            # Handle if issue is a String (legacy/fallback) vs Object (normal)
+            if isinstance(issue, str):
+                contract_issues.append(ValidationIssue(
+                    severity="medium",
+                    category="policy",
+                    message=issue
+                ))
+            else:
+                # Issue is a ComplianceIssue object
+                contract_issues.append(ValidationIssue(
+                    severity=issue.severity,
+                    category=issue.category, # This is now safe/normalized
+                    message=f"{issue.title}: {issue.description}"
+                ))
 
         return MsgValidationWarn(
             type='VALIDATION_WARN',
-            payload=ValidationWarnPayload(issues=issue_objs, safety_score=score)
+            payload=ValidationWarnPayload(issues=contract_issues, safety_score=score)
         ).model_dump(by_alias=True)

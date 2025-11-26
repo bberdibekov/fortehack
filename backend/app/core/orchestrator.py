@@ -28,6 +28,8 @@ from app.core.tools.definitions import UpdateRequirementsTool, TriggerVisualizat
 
 # Prompts
 from app.core.llm.prompts.system_manager import SYSTEM_MANAGER_PROMPT
+import traceback
+
 
 class Orchestrator:
     def __init__(self, session_id: str, emit: Callable, repository: ISessionRepository):
@@ -66,6 +68,11 @@ class Orchestrator:
 
     async def emit_mapped(self, message_dict: Dict[str, Any]):
         """Helper to emit strictly typed messages from Mapper."""
+        
+        if message_dict["type"] == "ARTIFACT_OPEN":
+            import json
+            print(f"📦 SENDING ARTIFACT: {json.dumps(message_dict, indent=2)}")
+        
         await self.emit(message_dict["type"], message_dict["payload"])
 
     async def handle_user_message(self, message: str):
@@ -83,7 +90,10 @@ class Orchestrator:
         max_turns = AgentConfig.MAX_AGENT_TURNS
 
         try:
-            for _ in range(max_turns):
+            for i in range(max_turns):
+                status_msg = "Processing..." if i == 0 else "Reviewing results..."
+                await self.emit_mapped(DomainMapper.to_status_update("thinking", status_msg))
+
                 response: LLMResponse = await self.openai_client.chat_with_tools(
                     messages=messages,
                     tools_schema=tools_schema,
@@ -183,14 +193,20 @@ class Orchestrator:
                 new_content = result.dict()
 
             if new_content:
+                # 2. PERSISTENCE PHASE
                 state.artifacts[artifact_type] = new_content
                 await self.state_manager.save_session(state)
                 
-                # STRICT MAPPING: Artifact Open
-                await self.emit_mapped(DomainMapper.to_artifact_open(artifact_type, new_content))
-                
-                # STRICT MAPPING: Success
-                await self.emit_mapped(DomainMapper.to_status_update("success", f"Generated {artifact_type}"))
+                # 3. MAPPING PHASE (Most likely failure point for complex objects)
+                try:
+                    event_payload = DomainMapper.to_artifact_open(artifact_type, new_content)
+                    await self.emit_mapped(event_payload)
+                    await self.emit_mapped(DomainMapper.to_status_update("success", f"Generated {artifact_type}"))
+                    print(f"✅ Generator FINISHED: {artifact_type}")
+                except Exception as map_err:
+                    print(f"🔥 MAPPING ERROR for {artifact_type}: {map_err}")
+                    traceback.print_exc()
+                    raise map_err # Re-raise to trigger outer catch
                 
         except asyncio.CancelledError:
             pass
