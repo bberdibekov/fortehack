@@ -3,6 +3,7 @@ import { AlertTriangle } from 'lucide-react';
 import { type WorkbookData, type WorkbookCategory } from '@/core/api/types/generated';
 import { useArtifactStore } from '@/features/artifacts/stores/artifact-store';
 import { CategoryCard } from './workbook/category-card';
+import { useChatSocket } from '@/shared/hooks/use-chat-socket'; // <--- IMPORT
 
 interface AnalystWorkbookProps {
   artifactId: string;
@@ -11,6 +12,8 @@ interface AnalystWorkbookProps {
 
 export const AnalystWorkbook = ({ artifactId, content }: AnalystWorkbookProps) => {
   const { updateArtifactContent } = useArtifactStore();
+  const { saveArtifact } = useChatSocket(); // <--- HOOK
+  
   const [data, setData] = useState<WorkbookData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -18,7 +21,6 @@ export const AnalystWorkbook = ({ artifactId, content }: AnalystWorkbookProps) =
   useEffect(() => {
     try {
       const parsed = JSON.parse(content);
-      // Basic validation to ensure it has categories
       if (!parsed || !Array.isArray(parsed.categories)) {
           throw new Error("Missing 'categories' array");
       }
@@ -44,8 +46,14 @@ export const AnalystWorkbook = ({ artifactId, content }: AnalystWorkbookProps) =
     // Optimistic UI update
     setData(newData);
 
-    // Sync to Store (Serialize back to string for persistence/export)
-    updateArtifactContent(artifactId, JSON.stringify(newData, null, 2));
+    const jsonString = JSON.stringify(newData, null, 2);
+
+    // Sync to Local Store
+    updateArtifactContent(artifactId, jsonString);
+
+    // Sync to Backend
+    // Frontend type 'workbook' maps to backend 'analyst_workbook' via your key_map
+    saveArtifact("workbook", jsonString);
   };
 
   if (error) {

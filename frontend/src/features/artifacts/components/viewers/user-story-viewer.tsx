@@ -34,6 +34,7 @@ import {
 import { useArtifactStore } from '@/features/artifacts/stores/artifact-store';
 import { type UserStoryData, type UserStory } from '@/core/api/types/generated';
 import { cn } from '@/shared/utils';
+import { useChatSocket } from '@/shared/hooks/use-chat-socket'; // <--- IMPORT
 
 // Sub-components (Editors)
 import { EditableText } from './stories/editable-text';
@@ -44,7 +45,6 @@ interface UserStoryViewerProps {
   content: string;
 }
 
-// Helper for coloring the Priority Dropdown Trigger
 const getPriorityStyle = (p: string) => {
   switch(p?.toLowerCase()) {
     case 'high': return 'text-red-700 bg-red-50 border-red-200 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800';
@@ -56,14 +56,13 @@ const getPriorityStyle = (p: string) => {
 
 export const UserStoryViewer = ({ artifactId, content }: UserStoryViewerProps) => {
   const { updateArtifactContent } = useArtifactStore();
+  const { saveArtifact } = useChatSocket(); // <--- HOOK
   const [data, setData] = useState<UserStoryData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // 1. Parse Content
   useEffect(() => {
     try {
       const parsed = JSON.parse(content);
-      // Ensure the stories array exists
       if (!parsed || !Array.isArray(parsed.stories)) {
          throw new Error("Missing 'stories' array");
       }
@@ -75,10 +74,16 @@ export const UserStoryViewer = ({ artifactId, content }: UserStoryViewerProps) =
     }
   }, [content]);
 
-  // 2. Sync Logic (Save to Store)
+  // Sync Logic
   const handleUpdate = (newData: UserStoryData) => {
     setData(newData);
-    updateArtifactContent(artifactId, JSON.stringify(newData, null, 2));
+    const jsonString = JSON.stringify(newData, null, 2);
+    
+    // Sync Local
+    updateArtifactContent(artifactId, jsonString);
+    
+    // Sync Backend
+    saveArtifact("stories", jsonString);
   };
 
   const updateStory = (updatedStory: UserStory) => {
@@ -96,7 +101,6 @@ export const UserStoryViewer = ({ artifactId, content }: UserStoryViewerProps) =
   const addStory = () => {
     if (!data) return;
     const newId = `US-${data.stories.length + 101}`;
-    // Using cast for new story to match Schema type
     const newStory = {
       id: newId,
       priority: 'Medium',
@@ -109,9 +113,9 @@ export const UserStoryViewer = ({ artifactId, content }: UserStoryViewerProps) =
       scope: [],
       outOfScope: [],
       acceptanceCriteria: []
-    } as UserStory; // Cast required because strict generated type might expect Enums
+    } as UserStory;
 
-    handleUpdate({ ...data, stories: [newStory, ...data.stories] }); // Add to top
+    handleUpdate({ ...data, stories: [newStory, ...data.stories] });
   };
 
   if (error) return (
@@ -129,8 +133,6 @@ export const UserStoryViewer = ({ artifactId, content }: UserStoryViewerProps) =
   return (
     <div className="h-full w-full bg-slate-50 dark:bg-slate-950/50 overflow-y-auto p-4 md:p-8 scrollbar-hide">
       <div className="max-w-4xl mx-auto">
-        
-        {/* Header */}
         <div className="mb-6 flex justify-between items-end">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">User Stories</h1>
@@ -141,7 +143,6 @@ export const UserStoryViewer = ({ artifactId, content }: UserStoryViewerProps) =
           </Button>
         </div>
 
-        {/* List */}
         <Accordion type="single" collapsible className="space-y-4">
           {data.stories.map((story) => (
             <StoryCard 
@@ -157,7 +158,9 @@ export const UserStoryViewer = ({ artifactId, content }: UserStoryViewerProps) =
   );
 };
 
-// --- Individual Story Component ---
+// ... Rest of the file (StoryCard, etc.) remains exactly as it was ...
+// Re-paste the rest of StoryCard from the original file if implementing from scratch, 
+// otherwise just ensure the export 'UserStoryViewer' is replaced.
 
 interface StoryCardProps {
     story: UserStory;
