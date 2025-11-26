@@ -1,3 +1,4 @@
+// src/features/artifacts/components/viewers/workbook/category-card.tsx
 import { Plus, Target, Users, Activity, GitMerge } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
@@ -9,6 +10,7 @@ import { type UIWorkbookItem } from '@/features/artifacts/types/ui-types';
 // Components - Ensure this import path is correct relative to this file
 import { EditableItem } from './editable-item';
 import { GlossaryLabel } from '@/shared/components/glossary-label';
+import * as styles from '../styles/category-card.styles';
 
 interface CategoryCardProps {
   category: WorkbookCategory;
@@ -75,20 +77,20 @@ export const CategoryCard = ({ category, onUpdate }: CategoryCardProps) => {
   };
 
   return (
-    <Card className="shadow-sm border-muted-foreground/20 bg-card/50 backdrop-blur-sm transition-all hover:border-muted-foreground/40">
-      <CardHeader className="pb-2 border-b bg-muted/20">
-        <CardTitle className="text-sm font-semibold flex items-center gap-2 uppercase tracking-wider text-muted-foreground">
+    <Card className={styles.CARD_CLASSES}>
+      <CardHeader className={styles.CARD_HEADER_CLASSES}>
+        <CardTitle className={styles.CARD_TITLE_CLASSES}>
           {getIcon(category.icon)}
           <GlossaryLabel term={getGlossaryKey(category.title)}>
             {category.title}
           </GlossaryLabel>
-          <span className="ml-auto text-xs font-normal opacity-50">
+          <span className={styles.TITLE_COUNT_CLASSES}>
             {category.items.length} items
           </span>
         </CardTitle>
       </CardHeader>
       
-      <CardContent className="pt-2">
+      <CardContent className={styles.CARD_CONTENT_CLASSES}>
         <div className="flex flex-col">
           {category.items.map(item => {
             const uiItem = item as UIWorkbookItem;
@@ -108,7 +110,7 @@ export const CategoryCard = ({ category, onUpdate }: CategoryCardProps) => {
           <Button 
             variant="ghost" 
             size="sm" 
-            className="justify-start text-muted-foreground hover:text-primary mt-2 -ml-2 h-8 text-xs"
+            className={styles.ADD_ITEM_BUTTON_CLASSES}
             onClick={handleAddItem}
           >
             <Plus className="h-3.5 w-3.5 mr-2" />

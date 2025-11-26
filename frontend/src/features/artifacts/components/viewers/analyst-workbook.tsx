@@ -1,9 +1,11 @@
+// src/features/artifacts/components/viewers/analyst-workbook.tsx
 import { useEffect, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { type WorkbookData, type WorkbookCategory } from '@/core/api/types/generated';
 import { useArtifactStore } from '@/features/artifacts/stores/artifact-store';
 import { CategoryCard } from './workbook/category-card';
-import { useChatSocket } from '@/shared/hooks/use-chat-socket'; // <--- IMPORT
+import { useChatSocket } from '@/shared/hooks/use-chat-socket'; 
+import * as styles from './styles/analyst-workbook.styles';
 
 interface AnalystWorkbookProps {
   artifactId: string;
@@ -12,7 +14,7 @@ interface AnalystWorkbookProps {
 
 export const AnalystWorkbook = ({ artifactId, content }: AnalystWorkbookProps) => {
   const { updateArtifactContent } = useArtifactStore();
-  const { saveArtifact } = useChatSocket(); // <--- HOOK
+  const { saveArtifact } = useChatSocket(); 
   
   const [data, setData] = useState<WorkbookData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -58,14 +60,14 @@ export const AnalystWorkbook = ({ artifactId, content }: AnalystWorkbookProps) =
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-destructive p-8 text-center bg-destructive/5">
-        <div className="p-3 bg-destructive/10 rounded-full mb-3">
+      <div className={styles.ERROR_CONTAINER_CLASSES}>
+        <div className={styles.ERROR_ICON_WRAPPER_CLASSES}>
              <AlertTriangle className="h-8 w-8" />
         </div>
-        <h3 className="font-semibold text-lg mb-1">Failed to load Workbook</h3>
-        <p className="text-sm text-muted-foreground mb-4">{error}</p>
-        <div className="w-full max-w-md bg-muted/50 p-4 rounded-md border text-left overflow-auto max-h-[200px]">
-            <code className="text-xs font-mono whitespace-pre-wrap">{content}</code>
+        <h3 className={styles.ERROR_TITLE_CLASSES}>Failed to load Workbook</h3>
+        <p className={styles.ERROR_PARAGRAPH_CLASSES}>{error}</p>
+        <div className={styles.ERROR_CODE_BLOCK_CLASSES}>
+            <code className={styles.ERROR_CODE_ELEMENT_CLASSES}>{content}</code>
         </div>
       </div>
     );
@@ -74,17 +76,17 @@ export const AnalystWorkbook = ({ artifactId, content }: AnalystWorkbookProps) =
   if (!data) return null;
 
   return (
-    <div className="h-full w-full bg-slate-50 dark:bg-slate-950/50 overflow-y-auto p-4 md:p-8 scrollbar-hide">
-      <div className="max-w-5xl mx-auto space-y-8">
+    <div className={styles.WORKBOOK_WRAPPER_CLASSES}>
+      <div className={styles.CONTENT_LAYOUT_CLASSES}>
         
         {/* Header Section */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">Analyst Workbook</h1>
-          <p className="text-muted-foreground mt-1">Interactive analysis of requirements, actors, and scope.</p>
+        <div className={styles.HEADER_WRAPPER_CLASSES}>
+          <h1 className={styles.HEADER_TITLE_CLASSES}>Analyst Workbook</h1>
+          <p className={styles.HEADER_DESCRIPTION_CLASSES}>Interactive analysis of requirements, actors, and scope.</p>
         </div>
 
         {/* Grid Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-12">
+        <div className={styles.CATEGORY_GRID_CLASSES}>
           {data.categories.map(category => (
             <CategoryCard 
               key={category.id}

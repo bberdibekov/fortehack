@@ -1,24 +1,16 @@
+// src/features/artifacts/components/viewers/mermaid-viewer.tsx
 import { useEffect, useRef, useState, useCallback } from 'react';
 import mermaid from 'mermaid';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { ZoomIn, ZoomOut, RotateCcw, Download, AlertTriangle } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { useTheme } from '@/shared/components/theme-provider';
+import * as styles from './styles/mermaid-viewer.styles';
 
 interface MermaidViewerProps {
   content: string;
   title?: string;
 }
-
-// 1. Global CSS to enforce fonts across ALL diagram types
-const globalMermaidStyles = `
-  .mermaid svg { 
-    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif !important; 
-  }
-  .mermaid text, .mermaid tspan, .mermaid .label { 
-    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif !important; 
-  }
-`;
 
 export const MermaidViewer = ({ content, title }: MermaidViewerProps) => {
   const { theme } = useTheme();
@@ -49,7 +41,6 @@ export const MermaidViewer = ({ content, title }: MermaidViewerProps) => {
         fontFamily: 'Inter, sans-serif',
         
         // 3. THE MASTER CONFIG
-        // These variables map to almost ALL diagram types
         themeVariables: {
           darkMode: isDark,
           background: colors.background,
@@ -118,13 +109,13 @@ export const MermaidViewer = ({ content, title }: MermaidViewerProps) => {
 
   if (error) {
     return (
-      <div className="flex h-full flex-col items-center justify-center p-8 text-destructive text-center">
-        <div className="mb-4 rounded-full bg-destructive/10 p-4">
+      <div className={styles.ERROR_STATE_CLASSES}>
+        <div className={styles.ERROR_ICON_WRAPPER_CLASSES}>
             <AlertTriangle className="h-8 w-8" />
         </div>
         <h3 className="font-semibold mb-1">Diagram Render Failed</h3>
         <p className="text-sm text-muted-foreground mb-4">The mermaid syntax contains errors.</p>
-        <pre className="p-4 bg-muted/50 text-xs font-mono rounded border w-full max-w-md overflow-auto text-left whitespace-pre-wrap">
+        <pre className={styles.ERROR_CODE_BLOCK_CLASSES}>
             {content}
         </pre>
       </div>
@@ -132,9 +123,9 @@ export const MermaidViewer = ({ content, title }: MermaidViewerProps) => {
   }
 
   return (
-    <div className="h-full w-full flex flex-col bg-slate-50 dark:bg-slate-950/50 relative">
+    <div className={styles.VIEWER_WRAPPER_CLASSES}>
       {/* Inject global font overrides */}
-      <style>{globalMermaidStyles}</style>
+      <style>{styles.GLOBAL_STYLES_INJECTION}</style>
 
       <TransformWrapper
         initialScale={1}
@@ -146,7 +137,7 @@ export const MermaidViewer = ({ content, title }: MermaidViewerProps) => {
         {({ zoomIn, zoomOut, resetTransform }) => (
           <>
             {/* Toolbar */}
-            <div className="absolute bottom-4 right-4 z-10 flex gap-1 bg-background/95 backdrop-blur-sm p-1.5 rounded-lg border shadow-sm ring-1 ring-border/10">
+            <div className={styles.TOOLBAR_CLASSES}>
               <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md" onClick={() => zoomIn()} title="Zoom In">
                 <ZoomIn className="h-4 w-4" />
               </Button>
@@ -156,7 +147,7 @@ export const MermaidViewer = ({ content, title }: MermaidViewerProps) => {
               <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md" onClick={() => resetTransform()} title="Reset View">
                 <RotateCcw className="h-4 w-4" />
               </Button>
-               <div className="w-px h-4 bg-border my-auto mx-1" />
+               <div className={styles.TOOLBAR_SEPARATOR_CLASSES} />
               <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md" onClick={handleDownload} title="Download SVG">
                 <Download className="h-4 w-4" />
               </Button>
@@ -164,12 +155,12 @@ export const MermaidViewer = ({ content, title }: MermaidViewerProps) => {
 
             {/* Diagram Canvas */}
             <TransformComponent 
-                wrapperClass="!w-full !h-full" 
-                contentClass="!w-full !h-full flex items-center justify-center p-12"
+                wrapperClass={styles.TRANSFORM_COMPONENT_WRAPPER_CLASSES} 
+                contentClass={styles.TRANSFORM_CONTENT_CLASSES}
             >
               <div 
                 ref={containerRef}
-                className="mermaid-output [&>svg]:max-w-full [&>svg]:h-auto [&>svg]:shadow-none"
+                className={styles.MERMAID_RENDER_CONTAINER_CLASSES}
                 dangerouslySetInnerHTML={{ __html: svg }}
               />
             </TransformComponent>

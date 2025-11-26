@@ -1,5 +1,7 @@
+// src/features/artifacts/components/viewers/code-viewer.tsx
 import Editor, { loader } from '@monaco-editor/react';
 import { useTheme } from "@/shared/components/theme-provider";
+import * as styles from './styles/code-viewer.styles'; // <-- UPDATED IMPORT PATH
 
 interface CodeViewerProps {
   content: string;
@@ -16,7 +18,7 @@ export const CodeViewer = ({ content, language, readOnly = true }: CodeViewerPro
   const editorTheme = theme === 'dark' ? 'vs-dark' : 'light';
 
   return (
-    <div className="h-full w-full bg-[#1e1e1e]">
+    <div className={styles.CODE_VIEWER_WRAPPER_CLASSES}>
       <Editor
         height="100%"
         defaultLanguage={language || 'plaintext'}
@@ -33,7 +35,7 @@ export const CodeViewer = ({ content, language, readOnly = true }: CodeViewerPro
           cursorBlinking: 'smooth',
         }}
         loading={
-          <div className="h-full w-full flex items-center justify-center text-muted-foreground text-sm">
+          <div className={styles.CODE_VIEWER_LOADING_CLASSES}>
             Loading Editor...
           </div>
         }
