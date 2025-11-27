@@ -221,14 +221,10 @@ class Orchestrator:
             state = await self.state_manager.get_or_create_session(self.session_id)
 
             # 2. Identify the Internal Target
-            # The frontend sends 'mermaid_diagram'. We need to find the LATEST version of that.
-            # We assume 'doc_id' maps directly to 'artifact_type' in our current mapping logic.
             artifact_type = doc_id 
             current_version = state.artifact_counters.get(artifact_type, 0)
             
             if current_version == 0:
-                # Edge case: User edits something that doesn't exist yet?
-                # We initialize it as v1
                 current_version = 1
                 state.artifact_counters[artifact_type] = 1
 
@@ -241,11 +237,16 @@ class Orchestrator:
             # 4. Save to State (Current State Logic)
             state.artifacts[internal_id] = parsed_content
             
+            # 5. REVERSE SYNC (Active Ingestion)
+            # This ensures edits to Goal/Actors propagate to the Ledger
+            # so subsequent AI generations allow for these changes.
+            strategy.apply_reverse_sync(state, parsed_content)
+            
             await self.state_manager.save_session(state)
 
-            # 5. Success Response
+            # 6. Success Response
             await self.emit_mapped(DomainMapper.to_artifact_sync(doc_id, "synced", "Saved"))
-            logger.info(f"✏️  User Edited {internal_id}")
+            logger.info(f"✏️  User Edited {internal_id} (Synced to Ledger)")
 
         except ValueError as ve:
             # Logic Error (Validation)
@@ -257,7 +258,8 @@ class Orchestrator:
             logger.error(f"🔥 Edit Handler Failed: {e}")
             traceback.print_exc()
             await self.emit_mapped(DomainMapper.to_artifact_sync(doc_id, "error", "Internal Server Error"))
-    
+
+            
     async def _run_artifact_generator(self, artifact_type: str):
         # STRICT MAPPING: Status Update
         await self.emit_mapped(DomainMapper.to_status_update("working", f"Generating {artifact_type}..."))
