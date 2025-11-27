@@ -11,7 +11,7 @@ from app.schemas.contract import (
     MsgChatDelta, MsgStatusUpdate, MsgArtifactOpen, 
     MsgStateUpdate, MsgValidationWarn, MsgArtifactUpdate,
     StatusUpdatePayload, SystemStatus, ContractStateSnapshot,
-    ValidationWarnPayload, ValidationIssue, MsgArtifactUpdatePayload, MsgArtifactSync, ArtifactSyncPayload,MsgChatHistory, ChatMessage, ChatHistoryPayload  
+    ValidationWarnPayload, ValidationIssue, MsgArtifactUpdatePayload, MsgArtifactSync, ArtifactSyncPayload,MsgChatHistory, ChatMessage, ChatHistoryPayload, MsgSessionEstablished, SessionEstablishedPayload
 )
 
 
@@ -161,4 +161,14 @@ class DomainMapper:
         return MsgChatHistory(
             type='CHAT_HISTORY',
             payload=ChatHistoryPayload(messages=ui_messages)
+        ).model_dump(by_alias=True)
+    
+    @staticmethod
+    def to_session_established(session_id: str, is_new: bool) -> Dict[str, Any]:
+        return MsgSessionEstablished(
+            type='SESSION_ESTABLISHED',
+            payload=SessionEstablishedPayload(
+                session_id=session_id,
+                is_new=is_new
+            )
         ).model_dump(by_alias=True)

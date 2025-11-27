@@ -2,9 +2,11 @@ import { useEffect, useRef } from "react";
 import { type Message, useChatStore } from "@/features/chat/stores/chat-store";
 import { useArtifactStore } from "@/features/artifacts/stores/artifact-store";
 import { socketService } from "@/core/api/live-socket";
+import { getClientId, getSessionId, setSessionId } from "@/shared/utils/session-manager";
+import { type ChatMessage as WireMessage } from "@/core/api/types/generated";
 
 export const useSocketEvents = () => {
-  const { updateLastMessage, setStatus, setSuggestions, setMessages } =
+  const { updateLastMessage, setStatus, setSuggestions, setMessages, messages, addMessage } =
     useChatStore();
   const { addArtifact, updateArtifactContent, setArtifactSyncStatus } =
     useArtifactStore();
@@ -12,44 +14,69 @@ export const useSocketEvents = () => {
   const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    let clientId = localStorage.getItem("app_client_id");
-    if (!clientId) {
-      clientId = "client_" + Math.random().toString(36).substring(7);
-      localStorage.setItem("app_client_id", clientId);
-    }
+    const clientId = getClientId();
+    const sessionId = getSessionId();
 
-    socketService.connect(`ws://localhost:8000/ws/${clientId}`);
+    const baseUrl = `ws://localhost:8000/ws/${clientId}`;
+    const socketUrl = sessionId 
+        ? `${baseUrl}?session_id=${sessionId}`
+        : baseUrl;
+
+    socketService.connect(socketUrl);
 
     const unsubscribe = socketService.onMessage((event: any) => {
       switch (event.type) {
-        case "CHAT_HISTORY":
-          console.log("📜 [Handler] Handling CHAT_HISTORY", event.payload);
-          // Handle both Array and Object wrapper
-          const rawMessages = Array.isArray(event.payload)
-            ? event.payload
-            : event.payload?.messages;
-
-          if (Array.isArray(rawMessages)) {
-            const hydratedMessages: Message[] = rawMessages.map((
-              msg: any,
-              index: number,
-            ) => ({
-              id: `hist-${index}-${Date.now()}`,
-              role: msg.role,
-              content: msg.content,
-              timestamp: Date.now(),
-              status: "complete",
-            }));
-
-            console.log(`✅ Hydrating ${hydratedMessages.length} messages...`);
-            setMessages(hydratedMessages);
-          } else {
-            console.warn(
-              "⚠️ [Handler] CHAT_HISTORY payload structure mismatch:",
-              event.payload,
-            );
+        case "SESSION_ESTABLISHED":
+          if (event.payload?.sessionId) {
+             setSessionId(event.payload.sessionId);
           }
           break;
+
+        case "CHAT_HISTORY":
+          console.log("📜 [Handler] Handling CHAT_HISTORY");
+          let rawMessages: WireMessage[] = [];
+          
+          if (Array.isArray(event.payload)) {
+             rawMessages = event.payload;
+          } else if (event.payload?.messages && Array.isArray(event.payload.messages)) {
+             rawMessages = event.payload.messages;
+          }
+
+          const hydratedMessages: Message[] = rawMessages.map((msg, index) => {
+            const safeRole = (msg.role === 'user' || msg.role === 'assistant' || msg.role === 'system') 
+                ? msg.role 
+                : 'system';
+
+            return {
+              id: `hist-${index}-${Date.now()}`,
+              role: safeRole,
+              content: msg.content || "",
+              timestamp: Date.now(),
+              status: "complete",
+            };
+          });
+          setMessages(hydratedMessages);
+          break;
+
+        case "CHAT_DELTA":
+          const currentMessages = useChatStore.getState().messages;
+          const lastMsg = currentMessages[currentMessages.length - 1];
+
+          // If no message exists or last message is User, creates a new Assistant bubble
+          if (!lastMsg || lastMsg.role !== 'assistant') {
+             addMessage({
+                id: Date.now().toString(),
+                role: 'assistant',
+                content: event.payload,
+                timestamp: Date.now(),
+                status: 'streaming'
+             });
+          } else {
+             // Otherwise, append to existing
+             updateLastMessage(event.payload);
+          }
+          break;
+        // ----------------------------------
 
         case "ARTIFACT_OPEN":
           addArtifact(event.payload);
@@ -65,11 +92,6 @@ export const useSocketEvents = () => {
           const { id, status, message } = event.payload;
           if (id && status) {
             setArtifactSyncStatus(id, status, message);
-            if (status === "synced") {
-              setTimeout(() => {
-                // Optional fade out logic
-              }, 3000);
-            }
           }
           break;
 
@@ -110,5 +132,6 @@ export const useSocketEvents = () => {
     updateArtifactContent,
     setArtifactSyncStatus,
     setMessages,
+    addMessage 
   ]);
 };

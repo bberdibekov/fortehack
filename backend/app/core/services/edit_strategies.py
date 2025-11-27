@@ -2,6 +2,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List
 import json
+from app.domain.models.artifacts import WorkbookArtifact
 
 class IEditStrategy(ABC):
     @abstractmethod
@@ -64,10 +65,30 @@ class UserStoryEditStrategy(IEditStrategy):
 
         return {"stories": normalized_stories}
 
+class WorkbookEditStrategy(IEditStrategy):
+    def validate_and_parse(self, raw_content: Any) -> Any:
+        # 1. Normalize Input to Dict
+        if isinstance(raw_content, str):
+            try:
+                data = json.loads(raw_content)
+            except json.JSONDecodeError:
+                raise ValueError("Invalid JSON string in Workbook edit")
+        else:
+            data = raw_content
+
+        # 2. Strict Structure Validation via Pydantic
+        # This protects the storage from corrupted frontend states
+        try:
+            validated_model = WorkbookArtifact(**data)
+            return validated_model.model_dump()
+        except Exception as e:
+             raise ValueError(f"Workbook validation failed: {str(e)}")
+
 class EditStrategyFactory:
     _strategies = {
         "mermaid_diagram": MermaidEditStrategy(),
-        "user_story": UserStoryEditStrategy()
+        "user_story": UserStoryEditStrategy(),
+        "workbook": WorkbookEditStrategy() # Registered
     }
 
     @classmethod

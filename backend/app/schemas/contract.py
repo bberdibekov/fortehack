@@ -201,7 +201,15 @@ class MsgChatHistory(CamelModel):
     model_config = ConfigDict(title="MsgChatHistory")
     type: Literal['CHAT_HISTORY']
     payload: ChatHistoryPayload
+class SessionEstablishedPayload(CamelModel):
+    model_config = ConfigDict(title="SessionEstablishedPayload")
+    session_id: str
+    is_new: bool
 
+class MsgSessionEstablished(CamelModel):
+    model_config = ConfigDict(title="MsgSessionEstablished")
+    type: Literal['SESSION_ESTABLISHED']
+    payload: SessionEstablishedPayload
 
 
 # --- ROOT UNION (Exported as WebSocketMessage) ---
@@ -217,7 +225,8 @@ class WebSocketMessage(RootModel):
         MsgStateUpdate,
         MsgValidationWarn,
         MsgArtifactSync,
-        MsgChatHistory
+        MsgChatHistory,
+        MsgSessionEstablished
     ]
 
 

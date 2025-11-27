@@ -4,12 +4,10 @@ export class LiveSocketService implements IChatSocket {
   private static instance: LiveSocketService;
   private ws: WebSocket | null = null;
   private url: string = "";
-  // Observer pattern: Allow multiple parts of the app to listen if needed
   private listeners: ((msg: WebSocketMessage) => void)[] = [];
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private isExplicitDisconnect = false;
 
-  // Singleton Accessor
   public static getInstance(): LiveSocketService {
     if (!LiveSocketService.instance) {
       LiveSocketService.instance = new LiveSocketService();
@@ -18,10 +16,15 @@ export class LiveSocketService implements IChatSocket {
   }
 
   connect(url: string) {
-    // Prevent double connections if already connected/connecting
     if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
-        console.log("⚡ Socket already connected or connecting.");
-        return;
+        // If URL changed (e.g. session switch), we force reconnect
+        if (this.url !== url) {
+             console.log(`⚡ Switching socket connection from ${this.url} to ${url}`);
+             this.disconnect();
+        } else {
+             console.log("⚡ Socket already connected.");
+             return;
+        }
     }
 
     this.url = url;
@@ -41,20 +44,22 @@ export class LiveSocketService implements IChatSocket {
     this.ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        console.log(`📥 [Socket] Received: ${data.type}`, data.payload ? '(has payload)' : '(no payload)');
-        // Broadcast to all listeners
+        
+        if (data.type === 'CHAT_HISTORY') {
+            console.debug("📥 [Socket-Debug] Raw CHAT_HISTORY payload:", data.payload);
+        }
+
         this.listeners.forEach(listener => listener(data));
       } catch (err) {
         console.error("❌ Failed to parse WebSocket message:", err);
       }
     };
 
-    this.ws.onclose = () => {
+    this.ws.onclose = (event) => {
+       console.log(`⚠️ WebSocket Disconnected (Code: ${event.code})`);
       if (!this.isExplicitDisconnect) {
-        console.log("⚠️ WebSocket Disconnected. Reconnecting in 3s...");
+        console.log("Reconnecting in 3s...");
         this.reconnectTimer = setTimeout(() => this.connect(this.url), 3000);
-      } else {
-        console.log("🛑 WebSocket Disconnected (User initiated)");
       }
     };
 
@@ -83,15 +88,12 @@ export class LiveSocketService implements IChatSocket {
     }
   }
 
-  // Updated to support multiple listeners
   onMessage(callback: (msg: WebSocketMessage) => void) {
     this.listeners.push(callback);
-    // Return unsubscribe function
     return () => {
         this.listeners = this.listeners.filter(l => l !== callback);
     };
   }
 }
 
-// Export the singleton instance helper
 export const socketService = LiveSocketService.getInstance();

@@ -99,7 +99,6 @@ export const CategoryCard = ({ category, onUpdate }: CategoryCardProps) => {
                   key={uiItem.id}
                   value={uiItem.text}
                   isNew={uiItem.isNew}
-                  // Explicitly type 'val' here to fix the TS error
                   onSave={(val: string) => handleUpdateItem(uiItem.id, val)}
                   onDelete={() => handleDeleteItem(uiItem.id)}
                   isProcess={isProcessCategory}

@@ -25,3 +25,17 @@ class UserStory(BaseModel):
 
 class StoryArtifact(BaseModel):
     stories: List[UserStory]
+
+
+class WorkbookItem(BaseModel):
+    id: str = Field(description="Unique ID") 
+    text: str = Field(..., description="Content. Use '->' for flows.")
+
+class WorkbookCategory(BaseModel):
+    id: str = Field(description="Unique ID")
+    title: str = Field(..., description="Category Title")
+    icon: Optional[str] = Field(None, description="Icon key: target, users, activity, process")
+    items: List[WorkbookItem]
+
+class WorkbookArtifact(BaseModel):
+    categories: List[WorkbookCategory]

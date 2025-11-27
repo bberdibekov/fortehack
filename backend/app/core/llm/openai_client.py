@@ -114,7 +114,6 @@ class OpenAIClient(ILLMClient):
         try:
             logger.info(f"🚀 Calling Chat API with Tools [{params['model']}]")
             
-            # Using standard chat.completions (not beta.parse for general tools)
             completion = await self.client.chat.completions.create(**params)
             
             message = completion.choices[0].message

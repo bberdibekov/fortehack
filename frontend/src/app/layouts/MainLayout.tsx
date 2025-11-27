@@ -65,7 +65,6 @@ export const MainLayout = () => {
             <ResizableHandle withHandle className="bg-border/50 w-1 hover:bg-primary/20 transition-colors" />
 
             <ResizablePanel defaultSize={50} minSize={20} className="h-full bg-background border-l flex flex-col overflow-hidden">
-              {/* New Component */}
               <ArtifactHeader isFullscreen={false} />
               <div className="flex-1 overflow-hidden relative">
                 <ArtifactContainer />
@@ -77,7 +76,6 @@ export const MainLayout = () => {
         {/* STATE 3: ARTIFACT ONLY (FULLSCREEN) */}
         {layoutMode === 'artifact' && (
           <div className="flex-1 h-full w-full flex flex-col relative bg-background">
-            {/* New Component */}
             <ArtifactHeader isFullscreen={true} />
             <div className="flex-1 overflow-hidden relative">
               <ArtifactContainer />

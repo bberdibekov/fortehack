@@ -24,9 +24,10 @@ class UpdateRequirementsInput(BaseModel):
     steps_to_remove: List[int] = Field(default=[], description="List of Step IDs to remove.")
 
 class TriggerVisualizationInput(BaseModel):
-    # ... (Keep existing)
     model_config = ConfigDict(extra='forbid')
-    artifact_types: List[Literal['mermaid_diagram', 'user_story', 'kpi']] = Field(
+    
+    # UPDATED: Added 'workbook' to the allowed types
+    artifact_types: List[Literal['mermaid_diagram', 'user_story', 'workbook']] = Field(
         ..., 
-        description="Which artifacts to generate."
+        description="Which artifacts to generate. Recommended to request all three: ['mermaid_diagram', 'user_story', 'workbook'] for full analysis."
     )

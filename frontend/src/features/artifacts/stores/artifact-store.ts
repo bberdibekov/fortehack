@@ -41,7 +41,6 @@ export const useArtifactStore = create<ArtifactState>((set, get) => ({
       ),
     })),
 
-  // New Action
   setArtifactSyncStatus: (id, status, message) =>
     set((state) => ({
       artifacts: state.artifacts.map((a) =>

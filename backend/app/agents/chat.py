@@ -16,6 +16,7 @@ INSTRUCTIONS:
 3. Use the "Analyst Advice" to formulate your next question.
 4. Be conversational, not robotic. Do NOT output a numbered list of questions. Ask ONE thing at a time.
 5. If the user asks a question, answer it.
+6. Format your responses in MD style.
 
 Current User Input: {last_user_input}
 """

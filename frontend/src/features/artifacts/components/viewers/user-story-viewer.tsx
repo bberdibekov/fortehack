@@ -19,7 +19,7 @@ interface UserStoryViewerProps {
 }
 
 export const UserStoryViewer = ({ artifactId, content }: UserStoryViewerProps) => {
-  // Destructure the new action setArtifactSyncStatus
+  // Destructure setArtifactSyncStatus
   const { updateArtifactContent, setArtifactSyncStatus } = useArtifactStore();
   const { saveArtifact } = useChatSocket(); 
   

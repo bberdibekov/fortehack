@@ -14,7 +14,6 @@ import {
   Sun
 } from 'lucide-react';
 
-// UI Components
 import { Button } from '@/shared/components/ui/button';
 import { 
   Tooltip, 
@@ -23,23 +22,19 @@ import {
   TooltipTrigger 
 } from '@/shared/components/ui/tooltip';
 
-// Feature Components (Dialogs/Sheets)
 import { ChatHistory } from '@/features/chat/components/chat-history';
 import { SettingsDialog } from '@/features/settings/components/settings-dialog';
 import { HelpDialog } from '@/shared/components/help-dialog';
 
-// State & Hooks
 import { useUIStore } from '@/core/store/ui-store';
 import { useTheme } from '@/shared/components/theme-provider';
-import { useChatStore } from '@/features/chat/stores/chat-store';
-import { useArtifactStore } from '@/features/artifacts/stores/artifact-store';
 import { cn } from '@/shared/utils';
+import { clearSession } from '@/shared/utils/session-manager';
 
 interface SidebarProps {
   className?: string;
 }
 
-// --- Helper Component for Sidebar Items ---
 const SidebarItem = ({ 
   icon: Icon, 
   label, 
@@ -73,22 +68,19 @@ const SidebarItem = ({
   </Tooltip>
 );
 
-// --- Main Sidebar Component ---
 export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
-  // 1. Access Global State
   const { sidebarOpen, toggleSidebar, setSearchOpen } = useUIStore();
   const { theme, setTheme } = useTheme();
   
-  // 2. Actions for Resetting Chat
-  const resetChat = useChatStore(s => s.reset);
-  const resetArtifacts = useArtifactStore(s => s.reset);
-
-  // 3. Handlers
   const handleNewChat = () => {
-    // In prod need to save before resetting
     if (confirm("Start a new chat? This will clear the current session.")) {
-      resetChat();
-      resetArtifacts();
+      // 1. Remove ID from storage and URL
+      clearSession();
+      
+      // 2. Force Reload
+      // This ensures the App re-initializes, useSocketEvents runs again (finding no session ID),
+      // and connects to the backend as a new user session.
+      window.location.reload();
     }
   };
 
@@ -96,7 +88,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
-  // 4. Render Collapsed State
   if (!sidebarOpen) {
     return (
       <div className="absolute left-4 top-4 z-50 animate-in fade-in duration-300">
@@ -119,7 +110,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
     );
   }
 
-  // 5. Render Expanded State
   return (
     <TooltipProvider delayDuration={0}>
       <aside className={cn(
@@ -128,9 +118,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
         className
       )}>
         
-        {/* --- TOP SECTION: Navigation --- */}
         <div className="flex flex-col items-center gap-3 py-6">
-          {/* New Chat */}
           <div className="mb-2">
              <SidebarItem 
                 icon={MessageSquarePlus} 
@@ -140,48 +128,40 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
              />
           </div>
           
-          {/* Global Search */}
           <SidebarItem 
             icon={Search} 
             label="Search (⌘K)" 
             onClick={() => setSearchOpen(true)}
           />
           
-          {/* History Drawer */}
           <ChatHistory>
-            <div> {/* Wrapper needed for SheetTrigger to function correctly */}
+            <div>
               <SidebarItem icon={History} label="History" />
             </div>
           </ChatHistory>
         </div>
 
-        {/* Divider */}
         <div className="mx-auto w-10 border-t border-border/60 my-2" />
 
-        {/* --- MIDDLE SECTION: Tools --- */}
         <div className="flex flex-col items-center gap-3 py-2 flex-1">
           <SidebarItem icon={FileUp} label="Upload File" />
           <SidebarItem icon={Mic} label="Voice Input" />
         </div>
 
-        {/* --- BOTTOM SECTION: System --- */}
         <div className="flex flex-col items-center gap-3 py-6 mt-auto bg-background/50 w-full border-t border-border/40 backdrop-blur-sm">
           
-          {/* Theme Toggle */}
           <SidebarItem 
             icon={theme === 'dark' ? Sun : Moon} 
             label={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`} 
             onClick={toggleTheme} 
           />
 
-          {/* Help Dialog */}
           <HelpDialog>
             <div>
               <SidebarItem icon={HelpCircle} label="Help & Documentation" />
             </div>
           </HelpDialog>
 
-          {/* Settings Dialog */}
           <SettingsDialog>
             <div>
               <SidebarItem icon={Settings} label="Settings" />
@@ -190,14 +170,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
           
           <div className="w-10 border-t border-border/60 my-1" />
 
-          {/* Collapse Sidebar */}
           <SidebarItem 
              icon={PanelLeftClose} 
              label="Collapse Sidebar" 
              onClick={toggleSidebar} 
           />
           
-          {/* User Profile (Placeholder) */}
           <div className="pt-2">
              <Button variant="ghost" size="icon" className="rounded-full overflow-hidden h-10 w-10 border border-border shadow-sm hover:ring-2 hover:ring-primary/20 transition-all">
                 <User className="h-6 w-6" />

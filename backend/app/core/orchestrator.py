@@ -16,6 +16,8 @@ from app.core.gap_engine import GapEngine
 from app.agents.checker import CheckerAgent
 from app.agents.mermaid import MermaidAgent
 from app.agents.analyst import AnalystAgent
+from app.agents.workbook import WorkbookAgent # <--- NEW IMPORT
+
 from app.core.services.mapper import DomainMapper
 from app.domain.models.state import SessionState
 
@@ -37,6 +39,10 @@ from app.core.services.edit_strategies import EditStrategyFactory
 # Prompts
 from app.core.llm.prompts.system_manager import SYSTEM_MANAGER_PROMPT
 
+# Logging
+from app.utils.logger import setup_logger
+
+logger = setup_logger("Orchestrator")
 
 class Orchestrator:
     def __init__(self, session_id: str, emit: Callable, repository: ISessionRepository):
@@ -61,20 +67,21 @@ class Orchestrator:
         # 3. Artifact Agents
         self.mermaid_agent = MermaidAgent(self.groq_client)
         self.analyst_agent = AnalystAgent(self.groq_client)
+        self.workbook_agent = WorkbookAgent(self.groq_client)
 
-        # --- STRATEGY PATTERN: GENERATORS ---
         # Maps artifact_type -> Async Generator Function
         self.artifact_generators: Dict[str, Callable[[SessionState], Awaitable[Any]]] = {
             "mermaid_diagram": self.mermaid_agent.generate,
             "user_story": self.analyst_agent.generate_stories,
+            "workbook": self.workbook_agent.generate,
         }
 
-        # --- STRATEGY PATTERN: VALIDATORS ---
         # Maps artifact_type -> Sync Validator Function
         # Signature: (content_dict, state) -> List[ComplianceIssue]
         self.artifact_validators: Dict[str, Callable[[Dict, SessionState], List[ComplianceIssue]]] = {
             "mermaid_diagram": ConsistencyValidator.validate_mermaid,
             "user_story": ConsistencyValidator.validate_stories
+            # "workbook": ConsistencyValidator.validate_workbook (Optional: Add later if needed)
         }
 
         self.tasks: Dict[str, asyncio.Task] = {}
@@ -93,14 +100,17 @@ class Orchestrator:
         await self.emit(message_dict["type"], message_dict["payload"])
 
     async def handle_user_message(self, message: str):
+        # 1. Load State (Ensures we act on persisted data)
         state = await self.state_manager.get_or_create_session(self.session_id)
+        
+        # 2. Append User Message
         state.chat_history.append({"role": "user", "content": message})
         await self.state_manager.save_session(state)
         
         # Notify UI that we are working
         await self.emit_mapped(DomainMapper.to_status_update("thinking", "Processing..."))
         
-        tool_context = ToolContext(state, self.emit, self.services) # Pass raw emit to tools
+        tool_context = ToolContext(state, self.emit, self.services)
         
         messages = [{"role": "system", "content": SYSTEM_MANAGER_PROMPT}] + state.chat_history
         tools_schema = self.registry.get_schemas()
@@ -146,12 +156,17 @@ class Orchestrator:
                         if tool:
                             try:
                                 args = json.loads(tool_call.arguments)
+                                logger.info(f"🛠️ Tool Execution: {tool_name}")
                                 # Tools handle their own Mapper logic for Side Effects
                                 tool_output_str = await tool.execute(args, tool_context)
                             except Exception as e:
-                                tool_output_str = json.dumps({"error": f"Tool execution failed: {str(e)}"})
+                                error_msg = f"Tool execution failed: {str(e)}"
+                                logger.error(f"❌ {error_msg}")
+                                tool_output_str = json.dumps({"error": error_msg})
                         else:
-                            tool_output_str = json.dumps({"error": f"Unknown tool: {tool_name}"})
+                            error_msg = f"Unknown tool: {tool_name}"
+                            logger.error(f"❌ {error_msg}")
+                            tool_output_str = json.dumps({"error": error_msg})
 
                         tool_msg = {
                             "role": "tool",
@@ -176,7 +191,8 @@ class Orchestrator:
                     break 
             
         except Exception as e:
-            print(f"💀 Orchestrator Error: {e}")
+            logger.error(f"💀 Orchestrator Error: {e}")
+            traceback.print_exc()
             await self.emit_mapped(DomainMapper.to_status_update("idle", "Error processing request"))
             await self.emit_mapped(DomainMapper.to_chat_delta("I encountered an internal error."))
 
@@ -197,10 +213,6 @@ class Orchestrator:
     async def handle_artifact_edit(self, doc_id: str, new_content: Any):
         """
         Handles manual user edits to an artifact.
-        
-        Args:
-            doc_id: The 'wire_id' known to frontend (e.g., 'mermaid_diagram')
-            new_content: The raw modified data
         """
         # 1. Acknowledge Receipt (Processing)
         await self.emit_mapped(DomainMapper.to_artifact_sync(doc_id, "processing", "Validating..."))
@@ -229,23 +241,20 @@ class Orchestrator:
             # 4. Save to State (Current State Logic)
             state.artifacts[internal_id] = parsed_content
             
-            # TODO: Add 'User Locked' flag here if we want to prevent overwrite
-            # state.locked_artifacts.add(artifact_type) 
-            
             await self.state_manager.save_session(state)
 
             # 5. Success Response
             await self.emit_mapped(DomainMapper.to_artifact_sync(doc_id, "synced", "Saved"))
-            print(f"✏️  User Edited {internal_id}")
+            logger.info(f"✏️  User Edited {internal_id}")
 
         except ValueError as ve:
             # Logic Error (Validation)
-            print(f"⚠️ Edit Validation Failed: {ve}")
+            logger.warning(f"⚠️ Edit Validation Failed: {ve}")
             await self.emit_mapped(DomainMapper.to_artifact_sync(doc_id, "error", str(ve)))
             
         except Exception as e:
             # System Error
-            print(f"🔥 Edit Handler Failed: {e}")
+            logger.error(f"🔥 Edit Handler Failed: {e}")
             traceback.print_exc()
             await self.emit_mapped(DomainMapper.to_artifact_sync(doc_id, "error", "Internal Server Error"))
     
@@ -256,7 +265,7 @@ class Orchestrator:
         try:
             generator_func = self.artifact_generators.get(artifact_type)
             if not generator_func:
-                print(f"⚠️ No generator registered for: {artifact_type}")
+                logger.warning(f"⚠️ No generator registered for: {artifact_type}")
                 return
 
             state = await self.state_manager.get_or_create_session(self.session_id)
@@ -303,55 +312,59 @@ class Orchestrator:
                     await self.emit_mapped(open_payload)
 
                     await self.emit_mapped(DomainMapper.to_status_update("success", f"Generated {artifact_type}"))
-                    print(f"✅ Generator FINISHED: {internal_id} -> Wire: {wire_id}")
+                    logger.info(f"✅ Generator FINISHED: {internal_id} -> Wire: {wire_id}")
                     
                 except Exception as map_err:
-                    print(f"🔥 MAPPING ERROR for {artifact_type}: {map_err}")
+                    logger.error(f"🔥 MAPPING ERROR for {artifact_type}: {map_err}")
                     traceback.print_exc()
                     raise map_err 
                 
         except asyncio.CancelledError:
-            print(f"🛑 Generator Cancelled: {artifact_type}")
+            logger.info(f"🛑 Generator Cancelled: {artifact_type}")
         except Exception as e:
-            print(f"❌ Generator Failed: {e}")
+            logger.error(f"❌ Generator Failed: {e}")
             await self.emit_mapped(DomainMapper.to_status_update("idle", f"Failed to generate {artifact_type}"))
             traceback.print_exc()
         finally:
             await self.emit_mapped(DomainMapper.to_status_update("idle", "Ready"))
 
-    async def load_initial_state(self):
+    async def load_initial_state(self, is_new_session: bool = False):
         """
         Called on WebSocket connection. 
         Restores the frontend to the last known backend state.
         """
-        print(f"🔄 [Orchestrator] Loading initial state for session: {self.session_id}")
+        logger.info(f"🔄 [Orchestrator] Loading initial state for session: {self.session_id} (New={is_new_session})")
         
         try:
+            # 1. EMIT SESSION IDENTITY (Must be first)
+            await self.emit_mapped(DomainMapper.to_session_established(self.session_id, is_new_session))
+
+            # 2. Get State
             state = await self.state_manager.get_or_create_session(self.session_id)
-            print(f"   - Found {len(state.chat_history)} raw messages in history.")
-            print(f"   - Found {len(state.artifacts)} stored artifacts.")
+            logger.info(f"   - Found {len(state.chat_history)} raw messages in history.")
+            logger.info(f"   - Found {len(state.artifacts)} stored artifacts.")
             
-            # 1. Push Ledger State
+            # 3. Push Ledger State
             await self.emit_mapped(DomainMapper.to_state_update(state))
             
-            # 2. Push Chat History
+            # 4. Push Chat History
             # We wrap this in a specific try/catch to identify Mapping errors specifically
             try:
                 history_msg = DomainMapper.to_chat_history(state.chat_history)
-                # print(f"   - Mapped history payload: {json.dumps(history_msg, indent=2)}") # Uncomment if needed
                 await self.emit_mapped(history_msg)
-                print("   ✅ [Orchestrator] Emitted CHAT_HISTORY")
+                logger.info("   ✅ Emitted CHAT_HISTORY")
             except Exception as history_err:
-                print(f"   ❌ [Orchestrator] Failed to emit history: {history_err}")
+                logger.error(f"   ❌ Failed to emit history: {history_err}")
                 traceback.print_exc()
             
-            # 3. Push Artifacts (Restore Tabs)
+            # 5. Push Artifacts (Restore Tabs)
+            # We iterate over current active versions
             for artifact_type, version in state.artifact_counters.items():
                 internal_id = f"{artifact_type}-v{version}"
                 content = state.artifacts.get(internal_id)
                 
                 if content:
-                    print(f"   - Restoring artifact: {internal_id}")
+                    logger.info(f"   - Restoring artifact: {internal_id}")
                     wire_id = artifact_type 
                     await self.emit_mapped(DomainMapper.to_artifact_open(
                         artifact_type, 
@@ -359,10 +372,10 @@ class Orchestrator:
                         doc_id=wire_id
                     ))
             
-            # 4. Signal Ready
+            # 6. Signal Ready
             await self.emit_mapped(DomainMapper.to_status_update("idle", "Session Restored"))
-            print("   ✨ [Orchestrator] Session Restore Complete")
+            logger.info("   ✨ Session Restore Complete")
 
         except Exception as e:
-            print(f"🔥 [Orchestrator] Critical Error during load_initial_state: {e}")
+            logger.error(f"🔥 Critical Error during load_initial_state: {e}")
             traceback.print_exc()

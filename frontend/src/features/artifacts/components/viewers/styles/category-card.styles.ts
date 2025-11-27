@@ -21,6 +21,6 @@ export const TITLE_COUNT_CLASSES = "ml-auto text-xs font-normal opacity-50";
 // Card Content styling
 export const CARD_CONTENT_CLASSES = "pt-2";
 
-// Add Item Button styling
+// Item Button styling
 export const ADD_ITEM_BUTTON_CLASSES = 
     "justify-start text-muted-foreground hover:text-primary mt-2 -ml-2 h-8 text-xs";

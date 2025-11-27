@@ -9,7 +9,8 @@ export type WebSocketMessage =
   | MsgStateUpdate
   | MsgValidationWarn
   | MsgArtifactSync
-  | MsgChatHistory;
+  | MsgChatHistory
+  | MsgSessionEstablished;
 export type SystemStatus = "idle" | "thinking" | "working" | "success";
 export type ArtifactType = "code" | "markdown" | "json" | "html" | "pdf" | "mermaid" | "workbook" | "stories";
 export type Language = string | null;
@@ -129,6 +130,14 @@ export interface ChatHistoryPayload {
 export interface ChatMessage {
   role: string;
   content: string;
+}
+export interface MsgSessionEstablished {
+  type: "SESSION_ESTABLISHED";
+  payload: SessionEstablishedPayload;
+}
+export interface SessionEstablishedPayload {
+  sessionId: string;
+  isNew: boolean;
 }
 export interface UserStoryData {
   stories: Stories;

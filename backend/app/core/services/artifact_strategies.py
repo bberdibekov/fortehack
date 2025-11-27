@@ -72,10 +72,31 @@ class MermaidStrategy(IArtifactStrategy):
             content=code
         )
 
+class WorkbookStrategy(IArtifactStrategy):
+    def map(self, content: Any, doc_id: str) -> ContractArtifact:
+        # Content can be a Pydantic Model (from Agent) or a Dict (from Storage)
+        if hasattr(content, "model_dump_json"):
+            # Pydantic Model -> JSON String
+            json_content = content.model_dump_json()
+        elif isinstance(content, dict):
+            # Dict -> JSON String
+            json_content = json.dumps(content)
+        else:
+            # Fallback
+            json_content = json.dumps({"categories": []})
+
+        return ContractArtifact(
+            id=doc_id,
+            type=ArtifactType.WORKBOOK,
+            title="Analyst Workbook",
+            content=json_content
+        )
+
 class ArtifactStrategyFactory:
     _strategies = {
         "user_story": UserStoryStrategy(),
-        "mermaid_diagram": MermaidStrategy()
+        "mermaid_diagram": MermaidStrategy(),
+        "workbook": WorkbookStrategy() # Registered
     }
 
     @classmethod

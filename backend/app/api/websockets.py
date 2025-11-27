@@ -1,54 +1,72 @@
+# app/api/websockets.py
 import json
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+import uuid
+from typing import Optional
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from app.core.orchestrator import Orchestrator
 from app.state_container import session_repository
 
 router = APIRouter()
 
 @router.websocket("/ws/{client_id}")
-async def websocket_endpoint(websocket: WebSocket, client_id: str):
+async def websocket_endpoint(
+    websocket: WebSocket, 
+    client_id: str,
+    session_id: Optional[str] = Query(None) 
+):
     await websocket.accept()
     
-    # 1. Define the callback
+    # 1. Determine Session Identity
+    if session_id:
+        # Resume existing session
+        current_session_id = session_id
+        is_new_session = False
+        print(f"🔌 [WS] Client {client_id} resuming session: {current_session_id}")
+    else:
+        # Start new session
+        current_session_id = str(uuid.uuid4())
+        is_new_session = True
+        print(f"🔌 [WS] Client {client_id} starting NEW session: {current_session_id}")
+
+    # 2. Define the callback
     async def send_event(event_type: str, payload: dict):
-        # We wrap this in try/catch too, in case socket is dead
         try:
             await websocket.send_json({"type": event_type, "payload": payload})
         except Exception as e:
             print(f"Error sending to client: {e}")
 
-    # 2. Init Engine
-    engine = Orchestrator(session_id=client_id, emit=send_event, repository=session_repository)
+    # 3. Init Engine with the resolved Session ID
+    engine = Orchestrator(
+        session_id=current_session_id, 
+        emit=send_event, 
+        repository=session_repository
+    )
 
-    # Restore Session State immediately ---
+    # 4. Handshake & Restore
     try:
-        await engine.load_initial_state()
+        # We pass the flag so Orchestrator knows whether to emit SESSION_ESTABLISHED
+        await engine.load_initial_state(is_new_session=is_new_session)
     except Exception as e:
-        print(f"🔥 Failed to load initial state: {e}") 
+        print(f"🔥 Failed to load initial state: {e}")
+        # Optionally emit error to client here
+
     try:
         while True:
-            # Use receive_text first, then parse manually. 
             try:
                 raw_data = await websocket.receive_text()
-                
-                # Debug print to see exactly what client sent
-                print(f"Received raw: {raw_data}") 
-                
                 data = json.loads(raw_data)
                 
             except json.JSONDecodeError:
                 print("❌ Client sent invalid JSON. Ignoring.")
-                await websocket.send_json({"type": "ERROR", "payload": "Invalid JSON format. Please send {'type': '...', 'payload': '...'}"})
                 continue
 
-            # Process valid JSON
             event_type = data.get("type")
-            payload = data.get("payload") # Should be the 'content' or dict
+            payload = data.get("payload")
 
             if event_type == "USER_MESSAGE":
                 try:
-                        content = payload if isinstance(payload, str) else payload.get("content", "")
-                        await engine.handle_user_message(content)
+                    content = payload if isinstance(payload, str) else payload.get("content", "")
+                    await engine.handle_user_message(content)
                 except Exception as logic_error:
                     print(f"🔥 LOGIC CRASH: {logic_error}")
                     await send_event("ERROR", {"message": f"Server Logic Error: {str(logic_error)}"})
@@ -56,22 +74,17 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                     traceback.print_exc()
                 
             elif event_type == "ARTIFACT_EDIT":
-                # Handle edits
                 try:
-                    payload = data.get("payload", {})
-                    doc_id = payload.get("id")
-                    content = payload.get("content")
-                    
-                    if doc_id and content:
-                        await engine.handle_artifact_edit(doc_id, content)
+                    p_doc_id = payload.get("id")
+                    p_content = payload.get("content")
+                    if p_doc_id and p_content:
+                        await engine.handle_artifact_edit(p_doc_id, p_content)
                     else:
-                        print("⚠️ Invalid ARTIFACT_EDIT payload")
+                        print("⚠️ Invalid ARTIFACT_EDIT payload structure")
                 except Exception as e:
                     print(f"Error handling edit: {e}")
 
     except WebSocketDisconnect:
-        print(f"Client {client_id} disconnected")
+        print(f"Client {client_id} disconnected from {current_session_id}")
     except Exception as e:
         print(f"Critical Error in Socket Loop: {e}")
-        # Optionally close socket if critical
-        # await websocket.close()
