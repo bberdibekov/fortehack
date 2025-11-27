@@ -19,4 +19,10 @@ class AppConfig:
     SESSIONS_DIR = os.path.join(BASE_DIR, "data", "sessions")
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+    
+    #Confluence
+    CONFLUENCE_URL = os.getenv("CONFLUENCE_URL")
+    CONFLUENCE_USER_NAME = os.getenv("CONFLUENCE_USER_NAME")
+    CONFLUENCE_API_TOKEN = os.getenv("CONFLUENCE_API_TOKEN")
+
     LLM = AgentConfig
