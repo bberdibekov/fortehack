@@ -18,7 +18,9 @@ export type {
   ChatHistoryPayload,
   ChatMessage, 
   MsgSessionEstablished,
-  SessionEstablishedPayload
+  SessionEstablishedPayload,
+  UseCaseData,
+  UseCase
 } from "./schema";
 
 export type { WebSocketMessage } from "./schema";

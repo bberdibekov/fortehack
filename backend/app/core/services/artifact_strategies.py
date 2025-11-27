@@ -92,11 +92,28 @@ class WorkbookStrategy(IArtifactStrategy):
             content=json_content
         )
 
+class UseCaseStrategy(IArtifactStrategy):
+    def map(self, content: Any, doc_id: str) -> ContractArtifact:
+        if hasattr(content, "model_dump_json"):
+            json_content = content.model_dump_json()
+        elif isinstance(content, dict):
+            json_content = json.dumps(content)
+        else:
+            json_content = json.dumps({"use_cases": []})
+
+        return ContractArtifact(
+            id=doc_id,
+            type=ArtifactType.USE_CASE,
+            title="Use Cases",
+            content=json_content
+        )
+
 class ArtifactStrategyFactory:
     _strategies = {
         "user_story": UserStoryStrategy(),
         "mermaid_diagram": MermaidStrategy(),
-        "workbook": WorkbookStrategy() # Registered
+        "workbook": WorkbookStrategy(),
+        "use_case": UseCaseStrategy()
     }
 
     @classmethod

@@ -12,7 +12,16 @@ export type WebSocketMessage =
   | MsgChatHistory
   | MsgSessionEstablished;
 export type SystemStatus = "idle" | "thinking" | "working" | "success";
-export type ArtifactType = "code" | "markdown" | "json" | "html" | "pdf" | "mermaid" | "workbook" | "stories";
+export type ArtifactType =
+  | "code"
+  | "markdown"
+  | "json"
+  | "html"
+  | "pdf"
+  | "mermaid"
+  | "workbook"
+  | "stories"
+  | "use-case";
 export type Language = string | null;
 export type Projectscope = string | null;
 export type Responsibilities = string | null;
@@ -27,6 +36,9 @@ export type Stories = UserStory[];
 export type Icon = string | null;
 export type Items = WorkbookItem[];
 export type Categories = WorkbookCategory[];
+export type Alternativeflow = string | null;
+export type Mainflow = UseCaseStep[];
+export type Usecases = UseCase[];
 
 /**
  * This class is never instantiated in the app.
@@ -37,6 +49,7 @@ export interface FrontendContract {
   websocket_message: WebSocketMessage;
   user_story_data: UserStoryData;
   workbook_data: WorkbookData;
+  use_case_data: UseCaseData;
   [k: string]: unknown;
 }
 export interface MsgStatusUpdate {
@@ -167,4 +180,20 @@ export interface WorkbookCategory {
 export interface WorkbookItem {
   id: string;
   text: string;
+}
+export interface UseCaseData {
+  useCases: Usecases;
+}
+export interface UseCase {
+  id: string;
+  title: string;
+  primaryActor: string;
+  preconditions: string[];
+  postconditions: string[];
+  mainFlow: Mainflow;
+}
+export interface UseCaseStep {
+  stepNumber: number;
+  action: string;
+  alternativeFlow?: Alternativeflow;
 }

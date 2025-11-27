@@ -9,6 +9,7 @@ import { MermaidViewer } from './viewers/mermaid-viewer';
 import { AnalystWorkbook } from './viewers/analyst-workbook';
 import { UserStoryViewer } from './viewers/user-story-viewer';
 import { DocumentViewer } from './viewers/document-viewer';
+import { UseCaseViewer } from './viewers/use-case-viewer';
 
 export const ArtifactContainer = () => {
   const { artifacts, activeArtifactId } = useArtifactStore();
@@ -34,6 +35,8 @@ export const ArtifactContainer = () => {
         return <CodeViewer content={activeArtifact.content} language={activeArtifact.language || 'text'} />;
       case 'markdown':
         return <DocumentViewer content={activeArtifact.content} />;
+      case 'use-case':
+        return <UseCaseViewer content={activeArtifact.content} />;
       default:
         // Fallback for text
         return <CodeViewer content={activeArtifact.content} language="text" />;

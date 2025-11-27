@@ -34,6 +34,7 @@ class ArtifactType(str, Enum):
     MERMAID = 'mermaid'
     WORKBOOK = 'workbook'
     STORIES = 'stories'
+    USE_CASE = 'use-case'
 
 # --- DOMAIN MODELS ---
 
@@ -211,6 +212,22 @@ class MsgSessionEstablished(CamelModel):
     type: Literal['SESSION_ESTABLISHED']
     payload: SessionEstablishedPayload
 
+class UseCaseStep(CamelModel):
+    step_number: int
+    action: str
+    alternative_flow: Optional[str] = None
+
+class UseCase(CamelModel):
+    id: str
+    title: str
+    primary_actor: str
+    preconditions: List[str]
+    postconditions: List[str]
+    main_flow: List[UseCaseStep]
+
+class UseCaseData(CamelModel):
+    use_cases: List[UseCase]
+
 
 # --- ROOT UNION (Exported as WebSocketMessage) ---
 
@@ -243,3 +260,4 @@ class FrontendContract(BaseModel):
     websocket_message: WebSocketMessage
     user_story_data: UserStoryData
     workbook_data: WorkbookData
+    use_case_data: UseCaseData

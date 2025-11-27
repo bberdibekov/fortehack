@@ -16,7 +16,8 @@ from app.core.gap_engine import GapEngine
 from app.agents.checker import CheckerAgent
 from app.agents.mermaid import MermaidAgent
 from app.agents.analyst import AnalystAgent
-from app.agents.workbook import WorkbookAgent # <--- NEW IMPORT
+from app.agents.workbook import WorkbookAgent
+from app.agents.use_case import UseCaseAgent
 
 from app.core.services.mapper import DomainMapper
 from app.domain.models.state import SessionState
@@ -68,12 +69,14 @@ class Orchestrator:
         self.mermaid_agent = MermaidAgent(self.groq_client)
         self.analyst_agent = AnalystAgent(self.groq_client)
         self.workbook_agent = WorkbookAgent(self.groq_client)
+        self.use_case_agent = UseCaseAgent(self.groq_client)
 
         # Maps artifact_type -> Async Generator Function
         self.artifact_generators: Dict[str, Callable[[SessionState], Awaitable[Any]]] = {
             "mermaid_diagram": self.mermaid_agent.generate,
             "user_story": self.analyst_agent.generate_stories,
             "workbook": self.workbook_agent.generate,
+            "use_case": self.use_case_agent.generate,
         }
 
         # Maps artifact_type -> Sync Validator Function

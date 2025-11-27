@@ -27,7 +27,7 @@ class TriggerVisualizationInput(BaseModel):
     model_config = ConfigDict(extra='forbid')
     
     # UPDATED: Added 'workbook' to the allowed types
-    artifact_types: List[Literal['mermaid_diagram', 'user_story', 'workbook']] = Field(
+    artifact_types: List[Literal['mermaid_diagram', 'user_story', 'workbook', 'use_case']] = Field(
         ..., 
-        description="Which artifacts to generate. Recommended to request all three: ['mermaid_diagram', 'user_story', 'workbook'] for full analysis."
+        description="Artifacts to generate. Recommended to request all: ['mermaid_diagram', 'user_story', 'workbook', 'use_case'] for full analysis."
     )

@@ -1,8 +1,8 @@
 # app/core/services/edit_strategies.py
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Any
 import json
-from app.domain.models.artifacts import WorkbookArtifact
+from app.domain.models.artifacts import WorkbookArtifact, UseCaseArtifact
 from app.domain.models.state import SessionState, Persona, BusinessGoal
 
 class IEditStrategy(ABC):
@@ -153,11 +153,64 @@ class WorkbookEditStrategy(IEditStrategy):
                 
                 state.actors = new_actor_list
 
+class UseCaseEditStrategy(IEditStrategy):
+    def validate_and_parse(self, raw_content: Any) -> Any:
+        # 1. Normalize
+        if isinstance(raw_content, str):
+            try:
+                data = json.loads(raw_content)
+            except json.JSONDecodeError:
+                raise ValueError("Invalid JSON string")
+        else:
+            data = raw_content
+
+        # 2. Pydantic Validation
+        try:
+            validated_model = UseCaseArtifact(**data)
+            return validated_model.model_dump()
+        except Exception as e:
+             raise ValueError(f"Use Case validation failed: {str(e)}")
+
+    def apply_reverse_sync(self, state: SessionState, content: Any) -> None:
+        """
+        Syncs 'primary_actor' from Use Cases back to the Ledger.
+        """
+        data = content
+        use_cases = data.get("use_cases", [])
+        
+        found_actors = set()
+        for uc in use_cases:
+            actor = uc.get("primary_actor")
+            if actor:
+                found_actors.add(actor.strip())
+
+        if not found_actors:
+            return
+
+        existing_roles_map = {a.role_name.lower(): a for a in state.actors}
+        changes_made = False
+        
+        for name in found_actors:
+            normalized = name.lower()
+            if normalized not in existing_roles_map:
+                # Add new actor derived from Use Case
+                new_actor = Persona(
+                    role_name=name,
+                    responsibilities="Identified via Use Case Primary Actor"
+                )
+                state.actors.append(new_actor)
+                existing_roles_map[normalized] = new_actor
+                changes_made = True
+        
+        if changes_made:
+            print(f"🔄 UseCase Sync: Updated actors list.")
+
 class EditStrategyFactory:
     _strategies = {
         "mermaid_diagram": MermaidEditStrategy(),
         "user_story": UserStoryEditStrategy(),
-        "workbook": WorkbookEditStrategy()
+        "workbook": WorkbookEditStrategy(),
+        "use_case": UseCaseEditStrategy()
     }
 
     @classmethod

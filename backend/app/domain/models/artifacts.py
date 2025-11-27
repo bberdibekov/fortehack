@@ -39,3 +39,21 @@ class WorkbookCategory(BaseModel):
 
 class WorkbookArtifact(BaseModel):
     categories: List[WorkbookCategory]
+
+
+# --- Use Case Models ---
+class UseCaseStep(BaseModel):
+    step_number: int
+    action: str = Field(..., description="What the actor or system does")
+    alternative_flow: Optional[str] = Field(None, description="E.g., 'If validation fails, show error'")
+
+class UseCase(BaseModel):
+    id: str = Field(..., description="Unique ID")
+    title: str
+    primary_actor: str
+    preconditions: List[str] = []
+    postconditions: List[str] = []
+    main_flow: List[UseCaseStep]
+
+class UseCaseArtifact(BaseModel):
+    use_cases: List[UseCase]
