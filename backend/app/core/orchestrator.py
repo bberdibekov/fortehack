@@ -318,3 +318,51 @@ class Orchestrator:
             traceback.print_exc()
         finally:
             await self.emit_mapped(DomainMapper.to_status_update("idle", "Ready"))
+
+    async def load_initial_state(self):
+        """
+        Called on WebSocket connection. 
+        Restores the frontend to the last known backend state.
+        """
+        print(f"🔄 [Orchestrator] Loading initial state for session: {self.session_id}")
+        
+        try:
+            state = await self.state_manager.get_or_create_session(self.session_id)
+            print(f"   - Found {len(state.chat_history)} raw messages in history.")
+            print(f"   - Found {len(state.artifacts)} stored artifacts.")
+            
+            # 1. Push Ledger State
+            await self.emit_mapped(DomainMapper.to_state_update(state))
+            
+            # 2. Push Chat History
+            # We wrap this in a specific try/catch to identify Mapping errors specifically
+            try:
+                history_msg = DomainMapper.to_chat_history(state.chat_history)
+                # print(f"   - Mapped history payload: {json.dumps(history_msg, indent=2)}") # Uncomment if needed
+                await self.emit_mapped(history_msg)
+                print("   ✅ [Orchestrator] Emitted CHAT_HISTORY")
+            except Exception as history_err:
+                print(f"   ❌ [Orchestrator] Failed to emit history: {history_err}")
+                traceback.print_exc()
+            
+            # 3. Push Artifacts (Restore Tabs)
+            for artifact_type, version in state.artifact_counters.items():
+                internal_id = f"{artifact_type}-v{version}"
+                content = state.artifacts.get(internal_id)
+                
+                if content:
+                    print(f"   - Restoring artifact: {internal_id}")
+                    wire_id = artifact_type 
+                    await self.emit_mapped(DomainMapper.to_artifact_open(
+                        artifact_type, 
+                        content, 
+                        doc_id=wire_id
+                    ))
+            
+            # 4. Signal Ready
+            await self.emit_mapped(DomainMapper.to_status_update("idle", "Session Restored"))
+            print("   ✨ [Orchestrator] Session Restore Complete")
+
+        except Exception as e:
+            print(f"🔥 [Orchestrator] Critical Error during load_initial_state: {e}")
+            traceback.print_exc()

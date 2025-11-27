@@ -3,7 +3,6 @@ import json
 from abc import ABC, abstractmethod
 from typing import Any, Dict
 
-from app.domain.models.artifacts import UserStory as InternalStory
 from app.schemas.contract import (
     ContractArtifact, 
     ArtifactType, 
@@ -14,26 +13,17 @@ from app.schemas.contract import (
 class IArtifactStrategy(ABC):
     @abstractmethod
     def map(self, content: Any, doc_id: str) -> ContractArtifact:
-        """Maps raw content to a ContractArtifact."""
         pass
 
 class UserStoryStrategy(IArtifactStrategy):
     def map(self, content: Any, doc_id: str) -> ContractArtifact:
-        # 1. Parse Content (Expect Dict with 'stories' list)
+        # Content is guaranteed to be a Dict with "stories" key due to our EditStrategy
         stories_data = content.get("stories", []) if isinstance(content, dict) else []
         
-        # 2. Map Internal -> Contract
         mapped_stories = []
-        for s in stories_data:
-            # Handle dict vs object input
-            data = s if isinstance(s, dict) else s.__dict__
-            
-            # Inline mapping (or call a shared helper if complex)
-            # For simplicity, we implement the mapping here or import the DomainMapper helper
-            # To avoid circular imports, we'll implement a simple mapper here
+        for data in stories_data:
             mapped_stories.append(self._map_single_story(data))
             
-        # 3. Serialize Container
         json_content = json.dumps({
             "stories": [s.model_dump(by_alias=True) for s in mapped_stories]
         })
@@ -46,22 +36,33 @@ class UserStoryStrategy(IArtifactStrategy):
         )
 
     def _map_single_story(self, data: dict) -> ContractUserStory:
+        # Robust Mapping: Read from normalized keys
+        
+        # Handle Priority Enum Safely
+        raw_prio = data.get("priority", "Medium")
+        try:
+            prio_enum = Priority(raw_prio)
+        except ValueError:
+            prio_enum = Priority.MEDIUM
+
         return ContractUserStory(
             id=data.get("id", "unknown"),
-            priority=Priority.MEDIUM, # Default
-            estimate="SP:?",
+            priority=prio_enum, # Use stored value
+            estimate=data.get("estimate", "SP:?"), # Use stored value
+            
             role=data.get("as_a", ""),
             action=data.get("i_want_to", ""),
             benefit=data.get("so_that", ""),
-            description=data.get("title", ""),
-            scope=data.get("scope") or [],
-            out_of_scope=data.get("out_of_scope") or [],
-            acceptance_criteria=data.get("acceptance_criteria") or []
+            
+            description=data.get("title", ""), # Internal 'title' -> Contract 'description'
+            
+            scope=data.get("scope", []),
+            out_of_scope=data.get("out_of_scope", []),
+            acceptance_criteria=data.get("acceptance_criteria", [])
         )
 
 class MermaidStrategy(IArtifactStrategy):
     def map(self, content: Any, doc_id: str) -> ContractArtifact:
-        # Expecting dict {'code': '...'} or raw string
         code = content.get("code", "") if isinstance(content, dict) else str(content)
         
         return ContractArtifact(
@@ -71,22 +72,12 @@ class MermaidStrategy(IArtifactStrategy):
             content=code
         )
 
-class DefaultStrategy(IArtifactStrategy):
-    def map(self, content: Any, doc_id: str) -> ContractArtifact:
-        return ContractArtifact(
-            id=doc_id,
-            type=ArtifactType.MARKDOWN,
-            title="Generated Document",
-            content=str(content)
-        )
-
 class ArtifactStrategyFactory:
-    """Registry for strategies"""
-    _strategies: Dict[str, IArtifactStrategy] = {
+    _strategies = {
         "user_story": UserStoryStrategy(),
         "mermaid_diagram": MermaidStrategy()
     }
 
     @classmethod
     def get_strategy(cls, artifact_type: str) -> IArtifactStrategy:
-        return cls._strategies.get(artifact_type, DefaultStrategy())
+        return cls._strategies.get(artifact_type, MermaidStrategy())

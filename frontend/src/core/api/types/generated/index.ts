@@ -14,6 +14,8 @@ export type {
   WorkbookCategory,
   WorkbookData,
   WorkbookItem,
+  MsgChatHistory,
+  ChatHistoryPayload
 } from "./schema";
 
 // --- 2. Clean up WebSocket Message Type ---

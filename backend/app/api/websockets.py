@@ -20,10 +20,14 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
     # 2. Init Engine
     engine = Orchestrator(session_id=client_id, emit=send_event, repository=session_repository)
 
+    # Restore Session State immediately ---
+    try:
+        await engine.load_initial_state()
+    except Exception as e:
+        print(f"🔥 Failed to load initial state: {e}") 
     try:
         while True:
-            # CHANGE: Use receive_text first, then parse manually. 
-            # This is safer for debugging.
+            # Use receive_text first, then parse manually. 
             try:
                 raw_data = await websocket.receive_text()
                 

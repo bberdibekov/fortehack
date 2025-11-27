@@ -41,6 +41,7 @@ export class LiveSocketService implements IChatSocket {
     this.ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        console.log(`📥 [Socket] Received: ${data.type}`, data.payload ? '(has payload)' : '(no payload)');
         // Broadcast to all listeners
         this.listeners.forEach(listener => listener(data));
       } catch (err) {

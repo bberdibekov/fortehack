@@ -2,22 +2,8 @@
 from app.core.llm.interface import ILLMClient
 from app.domain.models.state import SessionState
 from app.domain.models.artifacts import MermaidArtifact
-from app.core.services.context import system_context # <--- Use the pipeline instance
-
-PROMPT_TEMPLATE = """
-You are a Senior System Architect. 
-Generate a MermaidJS SEQUENCE DIAGRAM based on the provided Context.
-
-{context_block}
-
-RULES:
-1. Use 'sequenceDiagram' type.
-2. FIRST, declare ALL 'DEFINED ACTORS' using `participant Name` at the top of the file.
-   - Do this even if they have no steps in the 'PROCESS FLOW' yet.
-3. Then, map the 'PROCESS FLOW' to arrows (->>).
-4. Use safe node names (no spaces, use underscores).
-5. Return ONLY valid Mermaid syntax.
-"""
+from app.core.services.context import system_context
+from app.agents.prompts.mermaid import MERMAID_PROMPT_TEMPLATE
 
 class MermaidAgent:
     def __init__(self, llm_client: ILLMClient):
@@ -28,7 +14,7 @@ class MermaidAgent:
         context_str = system_context.build(state)
 
         messages = [
-            {"role": "system", "content": PROMPT_TEMPLATE.format(
+            {"role": "system", "content": MERMAID_PROMPT_TEMPLATE.format(
                 context_block=context_str
             )}
         ]

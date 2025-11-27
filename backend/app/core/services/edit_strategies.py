@@ -1,50 +1,69 @@
 # app/core/services/edit_strategies.py
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any, Dict, List
 import json
 
 class IEditStrategy(ABC):
     @abstractmethod
     def validate_and_parse(self, raw_content: Any) -> Any:
-        """
-        Validates incoming user content. 
-        Returns the data structure to be stored in SessionState.
-        Raises ValueError if invalid.
-        """
         pass
 
 class MermaidEditStrategy(IEditStrategy):
     def validate_and_parse(self, raw_content: Any) -> Any:
-        # Input: String (Mermaid code) or Dict
-        code = raw_content if isinstance(raw_content, str) else raw_content.get("code")
+        # Mermaid is simple, but we normalize input types
+        if isinstance(raw_content, str):
+            return {"code": raw_content, "explanation": "User Edited"}
         
-        if not code or not isinstance(code, str):
-            raise ValueError("Invalid Mermaid content: 'code' string is required.")
-        
-        # We store it in the internal format (Dict)
-        return {"code": code, "explanation": "User Edited"}
+        code = raw_content.get("code")
+        if not code:
+            raise ValueError("Mermaid content missing 'code' field")
+            
+        return {"code": code, "explanation": raw_content.get("explanation", "User Edited")}
 
 class UserStoryEditStrategy(IEditStrategy):
     def validate_and_parse(self, raw_content: Any) -> Any:
-        # Input: JSON string or List
+        # 1. Parse JSON if string
         if isinstance(raw_content, str):
             try:
                 data = json.loads(raw_content)
             except json.JSONDecodeError:
-                raise ValueError("Invalid JSON format for User Stories")
+                raise ValueError("Invalid JSON string")
         else:
             data = raw_content
 
-        # Basic Schema Check
-        if not isinstance(data, dict) or "stories" not in data:
-             # Fallback if frontend sends raw list
-             if isinstance(data, list):
-                 return {"stories": data}
-             raise ValueError("User Stories must be a list or wrapped in {stories: []}")
+        # 2. Extract List
+        # Frontend sends { "stories": [...] }
+        raw_list = data.get("stories", []) if isinstance(data, dict) else data
+        if not isinstance(raw_list, list):
+             raise ValueError("Stories must be a list")
 
-        return data
+        # 3. NORMALIZE (Camel -> Snake)
+        normalized_stories = []
+        for item in raw_list:
+            # We map External (Camel) -> Internal (Snake)
+            # We also handle case where it might ALREADY be snake (if LLM generated it and we are re-saving)
+            
+            story = {
+                "id": item.get("id") or item.get("id", "unknown"),
+                "title": item.get("description") or item.get("title", ""), # Contract 'description' maps to Internal 'title'
+                
+                # The Critical Mappings
+                "as_a": item.get("role") or item.get("as_a", ""),
+                "i_want_to": item.get("action") or item.get("i_want_to", ""),
+                "so_that": item.get("benefit") or item.get("so_that", ""),
+                
+                "acceptance_criteria": item.get("acceptanceCriteria") or item.get("acceptance_criteria", []),
+                
+                # Extended Fields
+                "priority": item.get("priority", "Medium"),
+                "estimate": item.get("estimate", "SP:?"),
+                "scope": item.get("scope", []),
+                "out_of_scope": item.get("outOfScope") or item.get("out_of_scope", [])
+            }
+            normalized_stories.append(story)
 
-# --- Factory / Registry ---
+        return {"stories": normalized_stories}
+
 class EditStrategyFactory:
     _strategies = {
         "mermaid_diagram": MermaidEditStrategy(),
@@ -53,7 +72,4 @@ class EditStrategyFactory:
 
     @classmethod
     def get_strategy(cls, artifact_type: str) -> IEditStrategy:
-        strategy = cls._strategies.get(artifact_type)
-        if not strategy:
-            raise ValueError(f"No edit strategy defined for {artifact_type}")
-        return strategy
+        return cls._strategies.get(artifact_type, MermaidEditStrategy()) # Default or Error

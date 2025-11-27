@@ -13,7 +13,7 @@ interface ChatInputProps {
 
 export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
   // --- DEFAULT TEXT HERE ---
-  const [input, setInput] = useState('Please generate a sample loan process to analyze risks.');
+  const [input, setInput] = useState('Please generate a simple sample loan process.');
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);

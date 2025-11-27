@@ -11,8 +11,10 @@ from app.schemas.contract import (
     MsgChatDelta, MsgStatusUpdate, MsgArtifactOpen, 
     MsgStateUpdate, MsgValidationWarn, MsgArtifactUpdate,
     StatusUpdatePayload, SystemStatus, ContractStateSnapshot,
-    ValidationWarnPayload, ValidationIssue, MsgArtifactUpdatePayload, MsgArtifactSync, ArtifactSyncPayload
+    ValidationWarnPayload, ValidationIssue, MsgArtifactUpdatePayload, MsgArtifactSync, ArtifactSyncPayload,MsgChatHistory, ChatMessage, ChatHistoryPayload  
 )
+
+
 
 class DomainMapper:
     """
@@ -130,4 +132,33 @@ class DomainMapper:
                 status=status,
                 message=message
             )
+        ).model_dump(by_alias=True)
+    
+
+    @staticmethod
+    def to_chat_history(history: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Filters and formats the raw session history for the UI.
+        """
+        ui_messages = []
+        skipped = 0
+        
+        for msg in history:
+            role = msg.get("role")
+            content = msg.get("content")
+            
+            # Filter: Only show User and Assistant messages. 
+            if role in ["user", "assistant"] and content:
+                ui_messages.append(ChatMessage(
+                    role=role,
+                    content=str(content)
+                ))
+            else:
+                skipped += 1
+        
+        print(f"   🔍 [Mapper] to_chat_history: {len(history)} raw -> {len(ui_messages)} UI messages ({skipped} skipped)")
+
+        return MsgChatHistory(
+            type='CHAT_HISTORY',
+            payload=ChatHistoryPayload(messages=ui_messages)
         ).model_dump(by_alias=True)

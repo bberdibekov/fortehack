@@ -191,6 +191,19 @@ class MsgArtifactSync(CamelModel):
     type: Literal['ARTIFACT_SYNC_EVENT']
     payload: ArtifactSyncPayload
 
+class ChatMessage(CamelModel):
+    role: str
+    content: str
+class ChatHistoryPayload(CamelModel):
+    model_config = ConfigDict(title="ChatHistoryPayload")
+    messages: List[ChatMessage]
+class MsgChatHistory(CamelModel):
+    model_config = ConfigDict(title="MsgChatHistory")
+    type: Literal['CHAT_HISTORY']
+    payload: ChatHistoryPayload
+
+
+
 # --- ROOT UNION (Exported as WebSocketMessage) ---
 
 class WebSocketMessage(RootModel):
@@ -203,7 +216,8 @@ class WebSocketMessage(RootModel):
         MsgArtifactUpdate,
         MsgStateUpdate,
         MsgValidationWarn,
-        MsgArtifactSync
+        MsgArtifactSync,
+        MsgChatHistory
     ]
 
 

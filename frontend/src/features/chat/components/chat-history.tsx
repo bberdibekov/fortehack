@@ -20,7 +20,7 @@ const MOCK_HISTORY = [
 ];
 
 interface ChatHistoryProps {
-  children: React.ReactNode; // The trigger button (Sidebar icon)
+  children: React.ReactNode;
 }
 
 export const ChatHistory = ({ children }: ChatHistoryProps) => {

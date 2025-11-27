@@ -1,18 +1,17 @@
 import { useEffect, useRef } from "react";
-import { useChatStore } from "@/features/chat/stores/chat-store";
+import { type Message, useChatStore } from "@/features/chat/stores/chat-store";
 import { useArtifactStore } from "@/features/artifacts/stores/artifact-store";
 import { socketService } from "@/core/api/live-socket";
 
 export const useSocketEvents = () => {
-  const { updateLastMessage, setStatus, setSuggestions } = useChatStore();
+  const { updateLastMessage, setStatus, setSuggestions, setMessages } =
+    useChatStore();
   const { addArtifact, updateArtifactContent, setArtifactSyncStatus } =
     useArtifactStore();
 
-  // Ref to track the auto-dismiss timer
   const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    // 1. Setup Identity & Connect
     let clientId = localStorage.getItem("app_client_id");
     if (!clientId) {
       clientId = "client_" + Math.random().toString(36).substring(7);
@@ -21,13 +20,35 @@ export const useSocketEvents = () => {
 
     socketService.connect(`ws://localhost:8000/ws/${clientId}`);
 
-    // 2. Register Global Event Handler
     const unsubscribe = socketService.onMessage((event: any) => {
-      // console.log("📩 Event:", event.type);
-
       switch (event.type) {
-        case "CHAT_DELTA":
-          updateLastMessage(event.payload);
+        case "CHAT_HISTORY":
+          console.log("📜 [Handler] Handling CHAT_HISTORY", event.payload);
+          // Handle both Array and Object wrapper
+          const rawMessages = Array.isArray(event.payload)
+            ? event.payload
+            : event.payload?.messages;
+
+          if (Array.isArray(rawMessages)) {
+            const hydratedMessages: Message[] = rawMessages.map((
+              msg: any,
+              index: number,
+            ) => ({
+              id: `hist-${index}-${Date.now()}`,
+              role: msg.role,
+              content: msg.content,
+              timestamp: Date.now(),
+              status: "complete",
+            }));
+
+            console.log(`✅ Hydrating ${hydratedMessages.length} messages...`);
+            setMessages(hydratedMessages);
+          } else {
+            console.warn(
+              "⚠️ [Handler] CHAT_HISTORY payload structure mismatch:",
+              event.payload,
+            );
+          }
           break;
 
         case "ARTIFACT_OPEN":
@@ -40,19 +61,13 @@ export const useSocketEvents = () => {
           }
           break;
 
-        // --- NEW SYNC EVENT ---
         case "ARTIFACT_SYNC_EVENT":
           const { id, status, message } = event.payload;
           if (id && status) {
             setArtifactSyncStatus(id, status, message);
-
-            // Auto-clear "synced" status after 3 seconds for cleanliness
             if (status === "synced") {
               setTimeout(() => {
-                // Only clear if it's still synced (user hasn't edited again)
-                // This is a bit tricky to check inside timeout closure without refs,
-                // but strictly setting to undefined or keeping 'synced' is fine.
-                // For now, let's leave it as 'synced' in the store, the UI can decide to fade it out.
+                // Optional fade out logic
               }, 3000);
             }
           }
@@ -66,16 +81,14 @@ export const useSocketEvents = () => {
           // @ts-ignore
           setStatus(statusPayload.status, statusPayload.message);
 
-          // --- AUTO DISMISS LOGIC (Issue #1) ---
           if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
-
           if (
             statusPayload.status === "success" ||
             statusPayload.status === "error"
           ) {
             statusTimerRef.current = setTimeout(() => {
               setStatus("idle", "");
-            }, 5000); // 5 seconds after success, go idle
+            }, 5000);
           }
           break;
 
@@ -96,5 +109,6 @@ export const useSocketEvents = () => {
     addArtifact,
     updateArtifactContent,
     setArtifactSyncStatus,
+    setMessages,
   ]);
 };
