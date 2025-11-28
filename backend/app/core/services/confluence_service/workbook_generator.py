@@ -1,17 +1,28 @@
+# app/core/services/confluence_service/workbook_generator.py
 from typing import List, Dict, Any
 
 def _get_category_icon(icon_key: str, title: str) -> str:
     """Helper to map icons based on the template logic."""
-    if icon_key == 'target': return "🎯"
-    if icon_key == 'users': return "👥"
-    if icon_key == 'activity': return "📈"
+    # Ensure keys are strings to avoid NoneType errors
+    key = (icon_key or "").lower()
+
+        
+    if key == 'target': return "🎯"
+    if key == 'users': return "👥"
+    if key == 'activity': return "📈"
     return "🔹"
+
+  
 
 def _generate_strategic_panel(category: Dict[str, Any]) -> str:
     """Generates a single panel for the Strategic Context section."""
-    icon = _get_category_icon(category.get('icon', ''), category.get('title', ''))
-    title = f"{icon} {category.get('title', 'Category')}"
-    
+    icon_val = category.get('icon') or ""
+    title_val = category.get('title') or "Category"
+
+        
+    icon = _get_category_icon(icon_val, title_val)
+    title = f"{icon} {title_val}"
+
     list_items = ""
     for item in category.get('items', []):
         text = item.get('text', '')
@@ -37,19 +48,23 @@ def _generate_strategic_panel(category: Dict[str, Any]) -> str:
     </ac:structured-macro>
     """
 
+  
+
 def generate_workbook_html(workbook_data: Dict[str, Any]) -> str:
     """
     Generates the Analyst Workbook Confluence Storage format.
     Expected data structure:
     {
-        "categories": [...],
-        "data_entities": [...],
-        "nfrs": [...]
+    "categories": [...],
+    "data_entities": [...],
+    "nfrs": [...]
     }
     """
     if not workbook_data:
         return ""
 
+
+        
     categories = workbook_data.get('categories', [])
     data_entities = workbook_data.get('data_entities', [])
     nfrs = workbook_data.get('nfrs', [])
@@ -57,10 +72,15 @@ def generate_workbook_html(workbook_data: Dict[str, Any]) -> str:
     # =========================================================
     # SECTION 1: STRATEGIC ANALYSIS (2-Column Grid)
     # =========================================================
-    
+
     # Filter non-process categories
-    strat_cats = [c for c in categories if 'process' not in c.get('icon', '') and 'flow' not in c.get('title', '').lower()]
-    
+    # FIX: Use (c.get('icon') or '') to safely handle None
+    strat_cats = [
+        c for c in categories 
+        if 'process' not in (c.get('icon') or '') 
+        and 'flow' not in (c.get('title') or '').lower()
+    ]
+
     # Split into Left and Right columns
     mid_point = (len(strat_cats) + 1) // 2
     left_cats = strat_cats[:mid_point]
@@ -80,11 +100,15 @@ def generate_workbook_html(workbook_data: Dict[str, Any]) -> str:
     <p>&nbsp;</p>
     """
 
-    # =========================================================
-    # SECTION 2: PROCESS FLOWS (Pill Visualization)
-    # =========================================================
-    
-    process_cats = [c for c in categories if 'process' in c.get('icon', '') or 'flow' in c.get('title', '').lower()]
+# =========================================================
+# SECTION 2: PROCESS FLOWS (Pill Visualization)
+# =========================================================
+
+    process_cats = [
+        c for c in categories 
+        if 'process' in (c.get('icon') or '') 
+        or 'flow' in (c.get('title') or '').lower()
+    ]
     process_html = ""
 
     for cat in process_cats:
@@ -105,7 +129,7 @@ def generate_workbook_html(workbook_data: Dict[str, Any]) -> str:
                 
                 pill_html = f"""
                 <span style="display: inline-block; padding: 4px 10px; border-radius: 16px; font-size: 12px; 
-                             font-weight: bold; {style}">
+                            font-weight: bold; {style}">
                     {step_text}
                 </span>
                 """
@@ -131,7 +155,7 @@ def generate_workbook_html(workbook_data: Dict[str, Any]) -> str:
     # =========================================================
     # SECTION 3: DATA DICTIONARY
     # =========================================================
-    
+
     data_html = ""
     if data_entities:
         rows = ""
@@ -140,8 +164,8 @@ def generate_workbook_html(workbook_data: Dict[str, Any]) -> str:
             for field in entity.get('fields', []):
                 fields_html += f"""
                 <span style="display: inline-block; background-color: #F4F5F7; border: 1px solid #DFE1E6; 
-                             border-radius: 3px; padding: 2px 5px; margin: 2px; font-family: monospace; 
-                             font-size: 11px; color: #42526E;">
+                            border-radius: 3px; padding: 2px 5px; margin: 2px; font-family: monospace; 
+                            font-size: 11px; color: #42526E;">
                     {field}
                 </span>
                 """
@@ -172,7 +196,7 @@ def generate_workbook_html(workbook_data: Dict[str, Any]) -> str:
     # =========================================================
     # SECTION 4: NFRs
     # =========================================================
-    
+
     nfr_html = ""
     if nfrs:
         rows = ""
