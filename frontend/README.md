@@ -1,7 +1,3 @@
-Here is the updated `README.md` reflecting the new capabilities (Use Case Viewer, Data Dictionary, NFRs, and enhanced Visual styling).
-
----
-
 # AI Business Analyst Platform
 
 A **AI Agent Interface** designed to automate business analysis. This platform mimics the workflow of a human analyst, holding conversations to gather requirements and automatically generating structured documentation (User Stories, Process Flows, Use Cases, Data Dictionaries) in real-time.
