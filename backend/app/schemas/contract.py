@@ -228,7 +228,16 @@ class UseCase(CamelModel):
 class UseCaseData(CamelModel):
     use_cases: List[UseCase]
 
+class ArtifactVisualSyncPayload(CamelModel):
+    model_config = ConfigDict(title="ArtifactVisualSyncPayload")
+    id: str = Field(..., description="The artifact ID (e.g. 'mermaid_diagram')")
+    visual_data: str = Field(..., description="Raw SVG string or base64 data")
+    format: Literal['svg', 'png'] = 'svg'
 
+class MsgArtifactVisualSync(CamelModel):
+    model_config = ConfigDict(title="MsgArtifactVisualSync")
+    type: Literal['ARTIFACT_VISUAL_SYNC']
+    payload: ArtifactVisualSyncPayload
 # --- ROOT UNION (Exported as WebSocketMessage) ---
 
 class WebSocketMessage(RootModel):
@@ -243,7 +252,8 @@ class WebSocketMessage(RootModel):
         MsgValidationWarn,
         MsgArtifactSync,
         MsgChatHistory,
-        MsgSessionEstablished
+        MsgSessionEstablished,
+        MsgArtifactVisualSync
     ]
 
 

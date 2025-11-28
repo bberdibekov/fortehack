@@ -6,14 +6,17 @@ import { ZoomIn, ZoomOut, RotateCcw, Download, AlertTriangle } from 'lucide-reac
 import { Button } from '@/shared/components/ui/button';
 import { useTheme } from '@/shared/components/theme-provider';
 import * as styles from './styles/mermaid-viewer.styles';
+import { useChatSocket } from '@/shared/hooks/use-chat-socket';
 
 interface MermaidViewerProps {
+  artifactId: string;
   content: string;
   title?: string;
 }
 
-export const MermaidViewer = ({ content, title }: MermaidViewerProps) => {
+export const MermaidViewer = ({ artifactId, content, title }: MermaidViewerProps) => {
   const { theme } = useTheme();
+  const { saveArtifactVisual } = useChatSocket();
   const containerRef = useRef<HTMLDivElement>(null);
   const [svg, setSvg] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
@@ -82,9 +85,14 @@ export const MermaidViewer = ({ content, title }: MermaidViewerProps) => {
       });
 
       const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
-      const { svg } = await mermaid.render(id, content);
-      setSvg(svg);
+      const { svg: svgContent } = await mermaid.render(id, content);
+      setSvg(svgContent);
       setError(null);
+
+      if (artifactId) {
+          saveArtifactVisual(artifactId, svgContent);
+      }
+
     } catch (err) {
       console.error("Mermaid Render Error:", err);
       setError("Failed to render diagram. Syntax might be invalid.");
@@ -92,7 +100,7 @@ export const MermaidViewer = ({ content, title }: MermaidViewerProps) => {
 
 
 
-  }, [content, theme]);
+  }, [content, theme, artifactId, saveArtifactVisual]);
 
   useEffect(() => {
     renderChart();

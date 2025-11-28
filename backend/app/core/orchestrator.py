@@ -21,6 +21,7 @@ from app.agents.use_case import UseCaseAgent
 
 from app.core.services.mapper import DomainMapper
 from app.domain.models.state import SessionState
+from app.core.services.publisher import PublishService
 
 # Persistence & RAG
 from app.core.interfaces.repository import ISessionRepository
@@ -36,6 +37,7 @@ from app.core.services.validator import ConsistencyValidator
 from app.domain.models.validation import ComplianceIssue
 
 from app.core.services.edit_strategies import EditStrategyFactory
+from app.core.services.context import system_context
 
 # Prompts
 from app.core.llm.prompts.system_manager import SYSTEM_MANAGER_PROMPT
@@ -97,6 +99,7 @@ class Orchestrator:
         self.registry = ToolRegistry()
         self.registry.register(UpdateRequirementsTool())
         self.registry.register(TriggerVisualizationTool())
+        self.publish_service = PublishService()
 
     async def emit_mapped(self, message_dict: Dict[str, Any]):
         """Helper to emit strictly typed messages from Mapper."""
@@ -114,8 +117,12 @@ class Orchestrator:
         await self.emit_mapped(DomainMapper.to_status_update("thinking", "Processing..."))
         
         tool_context = ToolContext(state, self.emit, self.services)
+
+        #INJECT CONTEXT INTO SYSTEM PROMPT
+        context_str = system_context.build(state)
+        formatted_system_prompt = SYSTEM_MANAGER_PROMPT.format(context_block=context_str)
         
-        messages = [{"role": "system", "content": SYSTEM_MANAGER_PROMPT}] + state.chat_history
+        messages = [{"role": "system", "content": formatted_system_prompt}] + state.chat_history
         tools_schema = self.registry.get_schemas()
         max_turns = AgentConfig.MAX_AGENT_TURNS
 
@@ -384,3 +391,62 @@ class Orchestrator:
         except Exception as e:
             logger.error(f"🔥 Critical Error during load_initial_state: {e}")
             traceback.print_exc()
+
+    async def handle_visual_sync(self, doc_id: str, visual_data: str, fmt: str):
+        """
+        Stores the visual representation (SVG) sent by the frontend.
+        Associates it with the CURRENT version of the artifact.
+        """
+        try:
+            state = await self.state_manager.get_or_create_session(self.session_id)
+            
+            # 1. Resolve to Internal Versioned ID
+            # The frontend sends 'mermaid_diagram' (wire ID).
+            # We assume this visual corresponds to the latest generated version.
+            artifact_type = doc_id
+            current_version = state.artifact_counters.get(artifact_type, 0)
+            
+            if current_version == 0:
+                logger.warning(f"⚠️ Received visual sync for unknown artifact: {doc_id}")
+                return
+
+            internal_id = f"{artifact_type}-v{current_version}"
+            
+            # 2. Store
+            state.visual_artifacts[internal_id] = visual_data
+            
+            # 3. Persist
+            await self.state_manager.save_session(state)
+            
+            logger.info(f"🖼️ Saved visual artifact ({fmt}) for {internal_id} (Size: {len(visual_data)} chars)")
+
+        except Exception as e:
+            logger.error(f"🔥 Visual Sync Failed: {e}")
+            traceback.print_exc()
+
+    
+    async def handle_publish(self, target: str):
+        """
+        Orchestrates the publishing workflow.
+        """
+        await self.emit_mapped(DomainMapper.to_status_update("working", f"Publishing to {target.title()}..."))
+        
+        try:
+            state = await self.state_manager.get_or_create_session(self.session_id)
+            doc_url = await self.publish_service.publish(state, target)
+            await self.emit_mapped(DomainMapper.to_status_update("success", "Documentation Published"))
+            success_msg = f"I have successfully published the requirements to {target.title()}.\n\n[View Documentation]({doc_url})"
+            
+            state.chat_history.append({"role": "assistant", "content": success_msg})
+            await self.state_manager.save_session(state)
+            await self.emit_mapped(DomainMapper.to_chat_delta(success_msg))
+
+        except Exception as e:
+            logger.error(f"🔥 Publish Failed: {e}")
+            await self.emit_mapped(DomainMapper.to_status_update("idle", "Publishing Failed"))
+            
+            error_msg = "I encountered an error while trying to publish the documents. Please try again."
+            await self.emit_mapped(DomainMapper.to_chat_delta(error_msg))
+            
+        finally:
+             await self.emit_mapped(DomainMapper.to_status_update("idle", "Ready"))

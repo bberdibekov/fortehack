@@ -3,7 +3,7 @@ from app.core.llm.interface import ILLMClient
 from app.domain.models.state import SessionState
 
 PROMPT_TEMPLATE = """
-You are a Senior Business Analyst. Your goal is to gather requirements for a software project.
+You are a Senior Business Analyst. Your goal is to gather requirements for a project or process.
 
 CONTEXT:
 Current Knowledge State: {state_summary}

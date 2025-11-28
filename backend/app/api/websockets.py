@@ -84,6 +84,25 @@ async def websocket_endpoint(
                 except Exception as e:
                     print(f"Error handling edit: {e}")
 
+            elif event_type == "ARTIFACT_VISUAL_SYNC":
+                try:
+                    p_id = payload.get("id")
+                    p_visual = payload.get("visual_data")
+                    p_fmt = payload.get("format", "svg")
+                    
+                    if p_id and p_visual:
+                        # Fire and forget (don't await strictly if performance matters, 
+                        # but awaiting ensures state consistency)
+                        await engine.handle_visual_sync(p_id, p_visual, p_fmt)
+                    else:
+                        print("⚠️ Invalid ARTIFACT_VISUAL_SYNC payload")
+                except Exception as e:
+                    print(f"Error handling visual sync: {e}")
+
+            elif event_type == "PROJECT_PUBLISH":
+                target = payload.get("target", "confluence")
+                await engine.handle_publish(target)
+
     except WebSocketDisconnect:
         print(f"Client {client_id} disconnected from {current_session_id}")
     except Exception as e:

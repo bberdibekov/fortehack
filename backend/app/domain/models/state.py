@@ -47,6 +47,11 @@ class SessionState(BaseModel):
     # Value: The content dict (raw output from agent)
     artifacts: Dict[str, Any] = {}
 
+    # Visual Storage (Rendered Content)
+    # Key: 'mermaid_diagram-v1', Value: "<svg>...</svg>"
+    # We store it against the specific version so we have history.
+    visual_artifacts: Dict[str, str] = {}
+
     # Sequence Counters (For Versioning)
     # Key: Artifact Type (e.g., 'mermaid_diagram')
     # Value: Latest Version Integer (e.g., 1)

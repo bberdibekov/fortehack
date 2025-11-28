@@ -6,25 +6,33 @@ export const useChatSocket = () => {
   const { addMessage } = useChatStore();
 
   const sendMessage = useCallback((content: string, files: File[] = []) => {
-    // 1. Optimistic User Message
     addMessage({
       id: Date.now().toString(),
       role: "user",
       content,
       timestamp: Date.now(),
     });
-
-
-    // 3. Send via Singleton
     socketService.sendMessage(content);
   }, [addMessage]);
 
   const saveArtifact = useCallback((id: string, content: string) => {
-    socketService.send("ARTIFACT_EDIT", {
-      id: id, 
-      content: content
+    socketService.send("ARTIFACT_EDIT", { id, content });
+  }, []);
+
+  const saveArtifactVisual = useCallback((id: string, visualData: string) => {
+    socketService.send("ARTIFACT_VISUAL_SYNC", {
+      id: id,
+      visual_data: visualData,
+      format: 'svg'
     });
   }, []);
 
-  return { sendMessage, saveArtifact };
+  const publishProject = useCallback(() => {
+    console.log("📤 Requesting Global Project Publish");
+    socketService.send("PROJECT_PUBLISH", {
+      target: "confluence"
+    });
+  }, []);
+
+  return { sendMessage, saveArtifact, saveArtifactVisual, publishProject };
 };

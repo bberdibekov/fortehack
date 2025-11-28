@@ -23,7 +23,13 @@ export const ArtifactContainer = () => {
 
     switch (activeArtifact.type) {
       case 'mermaid':
-        return <MermaidViewer content={activeArtifact.content} title={activeArtifact.title} />;
+        return (
+          <MermaidViewer
+            artifactId={activeArtifact.id}
+            content={activeArtifact.content}
+            title={activeArtifact.title}
+          />
+        );
       case 'workbook':
         return <AnalystWorkbook artifactId={activeArtifact.id} content={activeArtifact.content} />;
       case 'stories':

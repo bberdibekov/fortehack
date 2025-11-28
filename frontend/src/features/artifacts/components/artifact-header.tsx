@@ -1,14 +1,17 @@
+import { useState } from 'react';
 import {
     Maximize2,
     Columns,
     X,
     Cloud,
     Loader2,
-    AlertCircle
+    AlertCircle,
+    Share2 // <--- New Icon
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { useUIStore } from '@/core/store/ui-store';
 import { useArtifactStore } from '@/features/artifacts/stores/artifact-store';
+import { useChatSocket } from '@/shared/hooks/use-chat-socket';
 
 interface ArtifactHeaderProps {
     isFullscreen: boolean;
@@ -17,15 +20,31 @@ interface ArtifactHeaderProps {
 export const ArtifactHeader = ({ isFullscreen }: ArtifactHeaderProps) => {
     const { setLayoutMode } = useUIStore();
     const { activeArtifactId, artifacts } = useArtifactStore();
+    const { publishProject } = useChatSocket();
+
+    // Local loading state for visual feedback
+    const [isPublishing, setIsPublishing] = useState(false);
 
     const activeArtifact = artifacts.find(a => a.id === activeArtifactId);
     const status = activeArtifact?.syncStatus || 'synced';
-    const message = activeArtifact?.lastSyncMessage;
 
-    // --- RENDER SYNC INDICATOR ---
+    const handlePublish = () => {
+        if (!activeArtifactId) return;
+        
+        setIsPublishing(true);
+        publishProject();
+
+        // Simple visual feedback reset after 2 seconds 
+        // (In a real app, listen for a 'PUBLISH_COMPLETE' socket event)
+        setTimeout(() => {
+            setIsPublishing(false);
+            // If you have a toast library: toast.success("Sent to Confluence");
+        }, 2000);
+    };
+
     const renderSyncStatus = () => {
         if (!activeArtifact) return null;
-
+        // ... (Existing Sync Status Logic, unchanged) ...
         switch (status) {
             case 'saving':
             case 'processing':
@@ -52,9 +71,6 @@ export const ArtifactHeader = ({ isFullscreen }: ArtifactHeaderProps) => {
             default:
                 return null;
         }
-
-
-
     };
 
     return (
@@ -63,13 +79,34 @@ export const ArtifactHeader = ({ isFullscreen }: ArtifactHeaderProps) => {
                 <span className="text-sm font-medium text-muted-foreground">
                     Artifacts {isFullscreen ? '(Focus Mode)' : ''}
                 </span>
-                {/* Sync Indicator */}
                 <div className="hidden md:block">
                     {renderSyncStatus()}
                 </div>
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
+                
+                {/* --- PUBLISH BUTTON --- */}
+                {artifacts.length > 0 && (
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handlePublish}
+                        disabled={isPublishing}
+                        className="h-8 text-xs gap-2 mr-2 bg-background/50 hover:bg-blue-50 hover:text-blue-600 border border-slate-300 dark:border-slate-700 cursor-pointer"
+                    >
+                        {isPublishing ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                            <Share2 className="h-3.5 w-3.5" />
+                        )}
+                        {isPublishing ? 'Sending...' : 'Опубликовать в Confluence'}
+                    </Button>
+                )}
+
+                {/* Separator */}
+                <div className="h-4 w-[1px] bg-border mx-1" />
+
                 {isFullscreen ? (
                     <Button
                         variant="ghost"
@@ -103,8 +140,5 @@ export const ArtifactHeader = ({ isFullscreen }: ArtifactHeaderProps) => {
                 </Button>
             </div>
         </div>
-
-
-
     );
 };
