@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactMarkdown, { Components } from 'react-markdown';
+import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/shared/utils';
 import { Bot, User, Copy, RefreshCw, Terminal } from 'lucide-react';

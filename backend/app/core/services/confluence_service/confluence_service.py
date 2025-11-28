@@ -7,8 +7,7 @@ from typing import Optional, List, Union, Dict, Any
 
 from app.core.services.confluence_service.story_generator import generate_user_stories_html
 from app.core.services.confluence_service.use_case_generator import generate_use_cases_html
-
-# Configure logging
+from app.core.services.confluence_service.workbook_generator import generate_workbook_html
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -21,48 +20,25 @@ class ConfluenceService:
             'Accept': 'application/json'
         }
 
+  
     def create_page(self, space_key: str, title: str, html_body: str, parent_id: Optional[str] = None) -> dict:
         url = f"{self.base_url}/rest/api/content"
         payload = {
-            "title": title,
-            "type": "page",
-            "space": {"key": space_key},
-            "body": {
-                "storage": {
-                    "value": html_body,
-                    "representation": "storage"
-                }
-            }
+            "title": title, "type": "page", "space": {"key": space_key},
+            "body": {"storage": {"value": html_body, "representation": "storage"}}
         }
-        if parent_id:
-            payload["ancestors"] = [{"id": parent_id}]
-
+        if parent_id: payload["ancestors"] = [{"id": parent_id}]
         response = requests.post(url, json=payload, auth=self.auth, headers=self.headers)
-        if response.status_code == 200:
-            logger.info(f"Page '{title}' created successfully.")
-            return response.json()
-        else:
-            logger.error(f"Failed to create page: {response.text}")
-            response.raise_for_status()
+        if response.status_code == 200: return response.json()
+        response.raise_for_status()
 
     def upload_attachment(self, content_id: str, filename: str, file_content: Union[bytes, str], content_type: str) -> dict:
         url = f"{self.base_url}/rest/api/content/{content_id}/child/attachment"
         headers = {"X-Atlassian-Token": "nocheck"}
-
-        if isinstance(file_content, str):
-            file_data = file_content.encode('utf-8')
-        else:
-            file_data = file_content
-
+        if isinstance(file_content, str): file_data = file_content.encode('utf-8')
+        else: file_data = file_content
         files = {'file': (filename, file_data, content_type)}
-        response = requests.post(url, headers=headers, auth=self.auth, files=files)
-
-        if response.status_code == 200:
-            logger.info(f"Attachment '{filename}' uploaded successfully.")
-            return response.json()
-        else:
-            logger.error(f"Failed to upload attachment: {response.text}")
-            response.raise_for_status()
+        requests.post(url, headers=headers, auth=self.auth, files=files)
 
     def publish_analyst_report(
         self, 
@@ -72,16 +48,19 @@ class ConfluenceService:
         json_data: dict, 
         svg_content: str, 
         stories: Optional[List[Dict[str, Any]]] = None,
-        use_cases: Optional[List[Dict[str, Any]]] = None, # New Argument
+        use_cases: Optional[List[Dict[str, Any]]] = None,
+        workbook: Optional[Dict[str, Any]] = None,  # <--- NEW ARGUMENT
         parent_id: Optional[str] = None
     ):
         """
         Orchestration method to assemble all artifacts and publish.
         """
         
-        # 1. Generate Content Blocks
+        # 1. Generate HTML Blocks
         html_intro = markdown.markdown(md_text)
         
+        # Call Generators
+        workbook_html = generate_workbook_html(workbook)
         stories_html = generate_user_stories_html(stories)
         use_cases_html = generate_use_cases_html(use_cases)
 
@@ -93,18 +72,20 @@ class ConfluenceService:
         storage_body = f"""
         {html_intro}
         
+        {workbook_html}
+        
         {stories_html}
         
         {use_cases_html}
 
-        <h3>4. Generated Diagrams</h3>
+        <h3>5. Generated Diagrams</h3>
         <p>
             <ac:image>
                 <ri:attachment ri:filename="{svg_filename}" />
             </ac:image>
         </p>
 
-        <h3>5. Data Artifacts</h3>
+        <h3>6. Data Artifacts</h3>
         <p>
             <ac:link>
                 <ri:attachment ri:filename="{json_filename}" />
@@ -127,7 +108,6 @@ class ConfluenceService:
 
             # 5. Upload Artifacts
             self.upload_attachment(page_id, svg_filename, svg_content, "image/svg+xml")
-            
             json_str = json.dumps(json_data, indent=2)
             self.upload_attachment(page_id, json_filename, json_str, "application/json")
 

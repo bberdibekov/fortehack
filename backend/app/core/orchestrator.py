@@ -30,7 +30,7 @@ from app.infrastructure.knowledge.local_store import LocalPolicyStore
 # Tooling
 from app.core.tools.base import ToolContext
 from app.core.tools.registry import ToolRegistry
-from app.core.tools.definitions import UpdateRequirementsTool, TriggerVisualizationTool
+from app.core.tools.definitions import UpdateRequirementsTool, TriggerVisualizationTool, InspectArtifactTool, PatchArtifactTool
 
 # Validation & Context
 from app.core.services.validator import ConsistencyValidator
@@ -86,6 +86,7 @@ class Orchestrator:
         self.artifact_validators: Dict[str, Callable[[Dict, SessionState], List[ComplianceIssue]]] = {
             "mermaid_diagram": ConsistencyValidator.validate_mermaid,
             "user_story": ConsistencyValidator.validate_stories
+            
             # "workbook": ConsistencyValidator.validate_workbook (Optional: Add later if needed)
         }
 
@@ -99,6 +100,8 @@ class Orchestrator:
         self.registry = ToolRegistry()
         self.registry.register(UpdateRequirementsTool())
         self.registry.register(TriggerVisualizationTool())
+        self.registry.register(InspectArtifactTool())
+        self.registry.register(PatchArtifactTool())
         self.publish_service = PublishService()
 
     async def emit_mapped(self, message_dict: Dict[str, Any]):

@@ -62,6 +62,11 @@ Use the PROJECT STATE to identify ambiguity, risks, or missing pieces.
 ### 4. Compliance Findings
 - Treat as advisory. Only escalate if blocking.
 
+###5. Facts & Edits:
+   - If user asks about details (e.g. "What is the estimate?"), use `inspect_artifact` first.
+   - If user commands a change (e.g. "Set priority to High"), use `patch_artifact`.
+   - **Do NOT** use `trigger_visualization` (Regenerate) for small edits. Use `patch_artifact` for surgical fixes.
+
 ### EXECUTION FLOW
 1. Call `update_requirements`.
 2. Call `trigger_visualization`.
