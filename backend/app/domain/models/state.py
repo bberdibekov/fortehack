@@ -1,6 +1,7 @@
 # app/domain/models/state.py
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List, Optional, Any, Dict
+from typing import List, Optional, Any, Dict, Literal
+import uuid
 
 # --- 1. Sub-Entities ---
 class Persona(BaseModel):
@@ -20,6 +21,19 @@ class ProcessStep(BaseModel):
     description: str
     actor: str = Field(..., description="Who performs this step")
 
+class DataEntity(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    name: str = Field(..., description="The entity name (e.g. 'Customer', 'Loan Application')")
+    description: Optional[str] = Field(None, description="Brief definition")
+    fields: List[str] = Field(default=[], description="List of attributes (e.g. ['SSN', 'DOB', 'Address'])")
+
+class NonFunctionalRequirement(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    id: str = Field(default_factory=lambda: str(uuid.uuid4())[:8])
+    category: Literal["Security", "Performance", "Reliability", "Compliance", "Usability", "Other"]
+    requirement: str = Field(..., description="The constraint statement")
+
+
 # --- 2. The Extraction Target (What the LLM returns) ---
 class ExtractionResult(BaseModel):
     """
@@ -30,6 +44,8 @@ class ExtractionResult(BaseModel):
     found_goal: Optional[BusinessGoal] = None
     found_steps: List[ProcessStep] = []
     found_scope: Optional[str] = None
+    found_data_entities: List[DataEntity] = []
+    found_nfrs: List[NonFunctionalRequirement] = []
 
 # --- 3. The Source of Truth (The full state) ---
 class SessionState(BaseModel):
@@ -41,6 +57,8 @@ class SessionState(BaseModel):
     actors: List[Persona] = []
     goal: Optional[BusinessGoal] = None
     process_steps: List[ProcessStep] = []
+    data_entities: List[DataEntity] = []
+    nfrs: List[NonFunctionalRequirement] = []
     
     # Artifacts Storage
     # Key: The Versioned ID (e.g., 'mermaid_diagram-v1', 'user_story-v3')

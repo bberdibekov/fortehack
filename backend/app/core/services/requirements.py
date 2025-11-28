@@ -3,7 +3,7 @@ from typing import Dict, Any, List, Optional
 from app.core.services.state_manager import StateManager
 from app.core.gap_engine import GapEngine
 from app.agents.checker import CheckerAgent
-from app.domain.models.state import SessionState, BusinessGoal, Persona, ProcessStep
+from app.domain.models.state import SessionState, BusinessGoal, Persona, ProcessStep, DataEntity, NonFunctionalRequirement
 from app.domain.models.validation import ComplianceReport
 
 class RequirementsService:
@@ -49,6 +49,14 @@ class RequirementsService:
         if updates.get("process_steps"):
             steps_models = [ProcessStep(**s) for s in updates["process_steps"]]
             await self.state_manager.update_steps(session_id, steps_models)
+
+        if updates.get("data_entities"):
+            entities = [DataEntity(**d) for d in updates["data_entities"]]
+            await self.state_manager.update_data_entities(session_id, entities)
+
+        if updates.get("nfrs"):
+            reqs = [NonFunctionalRequirement(**n) for n in updates["nfrs"]]
+            await self.state_manager.update_nfrs(session_id, reqs)
 
         # --- 3. Fetch Fresh State (Read-Your-Writes) ---
         current_state = await self.state_manager.get_or_create_session(session_id)

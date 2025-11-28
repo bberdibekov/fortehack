@@ -20,7 +20,9 @@ export type {
   MsgSessionEstablished,
   SessionEstablishedPayload,
   UseCaseData,
-  UseCase
+  UseCase,
+  DataEntity,
+  NonFunctionalRequirement
 } from "./schema";
 
 export type { WebSocketMessage } from "./schema";

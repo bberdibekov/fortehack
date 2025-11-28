@@ -86,6 +86,18 @@ class ContractArtifact(CamelModel):
     content: str
     language: Optional[str] = None
 
+class ContractDataEntity(CamelModel):
+    model_config = ConfigDict(title="DataEntity")
+    name: str
+    description: Optional[str] = None
+    fields: List[str] = []
+
+class ContractNFR(CamelModel):
+    model_config = ConfigDict(title="NonFunctionalRequirement")
+    id: str
+    category: str  # We use str here for frontend flexibility, or Enum if strict
+    requirement: str
+
 # --- STATE SNAPSHOT MODELS (For State Update) ---
 
 class ContractPersona(CamelModel):
@@ -111,6 +123,8 @@ class ContractStateSnapshot(CamelModel):
     actors: List[ContractPersona] = []
     process_steps: List[ContractStep] = []
     goal: Optional[ContractGoal] = None
+    data_entities: List[ContractDataEntity] = []
+    nfrs: List[ContractNFR] = []
 
 # --- VALIDATION MODELS (For Validation Warn) ---
 

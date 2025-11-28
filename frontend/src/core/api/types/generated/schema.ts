@@ -10,7 +10,8 @@ export type WebSocketMessage =
   | MsgValidationWarn
   | MsgArtifactSync
   | MsgChatHistory
-  | MsgSessionEstablished;
+  | MsgSessionEstablished
+  | MsgArtifactVisualSync;
 export type SystemStatus = "idle" | "thinking" | "working" | "success";
 export type ArtifactType =
   | "code"
@@ -27,10 +28,14 @@ export type Projectscope = string | null;
 export type Responsibilities = string | null;
 export type Actors = Persona[];
 export type Processsteps = ProcessStep[];
+export type Description = string | null;
+export type Dataentities = DataEntity[];
+export type Nfrs = NonFunctionalRequirement[];
 export type Issues = ValidationIssue[];
 export type ArtifactSyncStatus = "saving" | "processing" | "synced" | "error";
 export type Message = string | null;
 export type Messages = ChatMessage[];
+export type Format = "svg" | "png";
 export type Priority = "High" | "Medium" | "Low";
 export type Stories = UserStory[];
 export type Icon = string | null;
@@ -97,6 +102,8 @@ export interface StateSnapshot {
   actors?: Actors;
   processSteps?: Processsteps;
   goal?: BusinessGoal | null;
+  dataEntities?: Dataentities;
+  nfrs?: Nfrs;
 }
 export interface Persona {
   roleName: string;
@@ -110,6 +117,16 @@ export interface ProcessStep {
 export interface BusinessGoal {
   mainGoal: string;
   successMetrics?: string[];
+}
+export interface DataEntity {
+  name: string;
+  description?: Description;
+  fields?: string[];
+}
+export interface NonFunctionalRequirement {
+  id: string;
+  category: string;
+  requirement: string;
 }
 export interface MsgValidationWarn {
   type: "VALIDATION_WARN";
@@ -151,6 +168,21 @@ export interface MsgSessionEstablished {
 export interface SessionEstablishedPayload {
   sessionId: string;
   isNew: boolean;
+}
+export interface MsgArtifactVisualSync {
+  type: "ARTIFACT_VISUAL_SYNC";
+  payload: ArtifactVisualSyncPayload;
+}
+export interface ArtifactVisualSyncPayload {
+  /**
+   * The artifact ID (e.g. 'mermaid_diagram')
+   */
+  id: string;
+  /**
+   * Raw SVG string or base64 data
+   */
+  visualData: string;
+  format?: Format;
 }
 export interface UserStoryData {
   stories: Stories;

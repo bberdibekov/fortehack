@@ -60,6 +60,15 @@ Your output must reflect *business reality*, not only technical systems. Process
    - Boundaries of the business process.
    - Operational or regulatory constraints.
    - Technical constraints **if stated**.
+   
+5. **Data Entities (The "What")**:
+   - Extract distinct data objects and their attributes.
+   - Example: Entity="Loan Application", Fields=["Applicant Name", "Amount", "SSN"].
+   
+6. **Non-Functional Requirements (The "Constraints")**:
+   - Technical or Quality constraints.
+   - Categories: Security, Performance, Reliability, Compliance, Usability.
+   - Example: "Must encrypt PII", "Page load under 2s", "99.9% Uptime".
 
 ---
 

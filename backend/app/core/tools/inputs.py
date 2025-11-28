@@ -1,7 +1,7 @@
 # app/core/tools/inputs.py
 from typing import List, Optional, Literal
 from pydantic import BaseModel, Field, ConfigDict
-from app.domain.models.state import Persona, BusinessGoal, ProcessStep
+from app.domain.models.state import Persona, BusinessGoal, ProcessStep, DataEntity, NonFunctionalRequirement
 
 class UpdateRequirementsInput(BaseModel):
     """
@@ -22,6 +22,8 @@ class UpdateRequirementsInput(BaseModel):
     # Steps
     process_steps: List[ProcessStep] = Field(default=[], description="The list of process steps (overwrites existing if IDs match, otherwise adds).")
     steps_to_remove: List[int] = Field(default=[], description="List of Step IDs to remove.")
+    data_entities: List[DataEntity] = Field(default=[], description="New or updated data entities identified.")
+    nfrs: List[NonFunctionalRequirement] = Field(default=[], description="New system constraints / NFRs.")
 
 class TriggerVisualizationInput(BaseModel):
     model_config = ConfigDict(extra='forbid')

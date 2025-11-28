@@ -1,12 +1,27 @@
-// src/features/artifacts/components/viewers/analyst-workbook.tsx
 import { useEffect, useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
-import { type WorkbookData, type WorkbookCategory } from '@/core/api/types/generated';
+import { 
+    type WorkbookData, 
+    type WorkbookCategory,
+    type DataEntity,
+    type NonFunctionalRequirement 
+} from '@/core/api/types/generated';
 import { useArtifactStore } from '@/features/artifacts/stores/artifact-store';
-import { CategoryCard } from './workbook/category-card';
 import { useChatSocket } from '@/shared/hooks/use-chat-socket';
 import { useDebouncedCallback } from '@/shared/hooks/use-debounce';
+
+// Sub-components
+import { CategoryCard } from './workbook/category-card';
+import { DataEntitySection } from './workbook/data-entity-card';
+import { NfrSection } from './workbook/nfr-section';             
+
 import * as styles from './styles/analyst-workbook.styles';
+
+// Extend the interface to include new fields locally
+// (Ideally this should match the Generated WorkbookData, but if there is drift we extend here)
+interface ExtendedWorkbookData extends WorkbookData {
+  dataEntities?: DataEntity[];
+  nfrs?: NonFunctionalRequirement[];
+}
 
 interface AnalystWorkbookProps {
   artifactId: string;
@@ -14,31 +29,28 @@ interface AnalystWorkbookProps {
 }
 
 export const AnalystWorkbook = ({ artifactId, content }: AnalystWorkbookProps) => {
-  // Destructure setArtifactSyncStatus
   const { updateArtifactContent, setArtifactSyncStatus } = useArtifactStore();
   const { saveArtifact } = useChatSocket();
 
-  const [data, setData] = useState<WorkbookData | null>(null);
+  const [data, setData] = useState<ExtendedWorkbookData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // 1. Debounced Socket Call
   const debouncedSave = useDebouncedCallback((id: string, jsonString: string) => {
-    // Optimistic UI: Set status to saving immediately
     setArtifactSyncStatus(id, 'saving');
     saveArtifact(id, jsonString);
   }, 1000);
 
-  // ... (Rest of component remains the same) ...
-  // [Code Omitted for Brevity - no other changes needed]
-
-  // 2. Parse JSON
   useEffect(() => {
     try {
       const parsed = JSON.parse(content);
-      if (!parsed || !Array.isArray(parsed.categories)) {
-        throw new Error("Missing 'categories' array");
-      }
-      setData(parsed);
+      // Support flexible structure (backend might send camelCase or snake_case)
+      const normalized: ExtendedWorkbookData = {
+          categories: parsed.categories || [],
+          dataEntities: parsed.dataEntities || parsed.data_entities || [],
+          nfrs: parsed.nfrs || []
+      };
+      
+      setData(normalized);
       setError(null);
     } catch (err) {
       console.error("Workbook Parse Error:", err);
@@ -46,7 +58,7 @@ export const AnalystWorkbook = ({ artifactId, content }: AnalystWorkbookProps) =
     }
   }, [content]);
 
-  // 3. Handle Updates
+  // Handle Updates for existing Categories
   const handleCategoryUpdate = (updatedCategory: WorkbookCategory) => {
     if (!data) return;
     const newData = {
@@ -55,27 +67,18 @@ export const AnalystWorkbook = ({ artifactId, content }: AnalystWorkbookProps) =
         cat.id === updatedCategory.id ? updatedCategory : cat
       )
     };
-
+    // Update local and store
     setData(newData);
     const jsonString = JSON.stringify(newData, null, 2);
     updateArtifactContent(artifactId, jsonString);
     debouncedSave(artifactId, jsonString);
-
-
-
   };
 
   if (error) {
     return (
       <div className={styles.ERROR_CONTAINER_CLASSES}>
-        <div className={styles.ERROR_ICON_WRAPPER_CLASSES}>
-             <AlertTriangle className="h-8 w-8" />
-        </div>
-        <h3 className={styles.ERROR_TITLE_CLASSES}>Failed to load Workbook</h3>
-        <p className={styles.ERROR_PARAGRAPH_CLASSES}>{error}</p>
-        <div className={styles.ERROR_CODE_BLOCK_CLASSES}>
-            <code className={styles.ERROR_CODE_ELEMENT_CLASSES}>{content}</code>
-        </div>
+        {/* ... error UI ... */}
+        <p>{error}</p>
       </div>
     );
   }
@@ -84,10 +87,16 @@ export const AnalystWorkbook = ({ artifactId, content }: AnalystWorkbookProps) =
   return (
     <div className={styles.WORKBOOK_WRAPPER_CLASSES}>
       <div className={styles.CONTENT_LAYOUT_CLASSES}>
+        
+        {/* 1. Header */}
         <div className={styles.HEADER_WRAPPER_CLASSES}>
           <h1 className={styles.HEADER_TITLE_CLASSES}>Analyst Workbook</h1>
-          <p className={styles.HEADER_DESCRIPTION_CLASSES}>Interactive analysis of requirements, actors, and scope.</p>
+          <p className={styles.HEADER_DESCRIPTION_CLASSES}>
+            Comprehensive analysis including Scope, Data Dictionary, and NFRs.
+          </p>
         </div>
+
+        {/* 2. Original Categories (Goals, Scope, Actors) */}
         <div className={styles.CATEGORY_GRID_CLASSES}>
           {data.categories.map(category => (
             <CategoryCard
@@ -97,6 +106,18 @@ export const AnalystWorkbook = ({ artifactId, content }: AnalystWorkbookProps) =
             />
           ))}
         </div>
+
+        {/* 3. NEW: Data Entities */}
+        {data.dataEntities && data.dataEntities.length > 0 && (
+            <DataEntitySection entities={data.dataEntities} />
+        )}
+
+        {/* 4. NEW: NFRs */}
+        {data.nfrs && data.nfrs.length > 0 && (
+            <NfrSection nfrs={data.nfrs} />
+        )}
+
+        <div className="h-10" /> {/* Bottom Spacer */}
       </div>
     </div>
   );

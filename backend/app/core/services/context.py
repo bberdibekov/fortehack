@@ -68,6 +68,22 @@ class ProcessSection(IContextSection):
             for s in state.process_steps
         ])
 
+
+class DataSection(IContextSection):
+    header = "DATA DICTIONARY"
+    def render(self, state: SessionState) -> Optional[str]:
+        if not state.data_entities: return None
+        return "\n".join([
+            f"- {d.name}: {', '.join(d.fields)}" for d in state.data_entities
+        ])
+
+class NFRSection(IContextSection):
+    header = "SYSTEM CONSTRAINTS (NFRs)"
+    def render(self, state: SessionState) -> Optional[str]:
+        if not state.nfrs: return None
+        return "\n".join([
+            f"- [{n.category}] {n.requirement}" for n in state.nfrs
+        ])
 # --- 3. The Pipeline Engine ---
 
 class ContextPipeline:
@@ -80,8 +96,10 @@ class ContextPipeline:
             ScopeSection(),
             GoalSection(),
             ActorSection(),
-            ProcessSection()
-            # Future: RiskSection(), DataModelSection(), etc.
+            ProcessSection(),
+            DataSection(),
+            NFRSection()
+            # Future: RiskSection(), Compliance(), etc.
         ]
 
     def add_section(self, section: IContextSection):

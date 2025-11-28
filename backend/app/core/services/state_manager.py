@@ -1,6 +1,6 @@
 # app/core/services/state_manager.py
 from typing import List
-from app.domain.models.state import SessionState, Persona, BusinessGoal, ProcessStep
+from app.domain.models.state import SessionState, Persona, BusinessGoal, ProcessStep, DataEntity, NonFunctionalRequirement
 from app.core.interfaces.repository import ISessionRepository
 from app.utils.logger import setup_logger
 
@@ -94,5 +94,39 @@ class StateManager:
     async def update_steps(self, session_id: str, steps: List[ProcessStep]) -> SessionState:
         state = await self.get_or_create_session(session_id)
         state.process_steps = steps
+        await self.repo.save(state)
+        return state
+    
+    async def update_data_entities(self, session_id: str, new_entities: List[DataEntity]) -> SessionState:
+        state = await self.get_or_create_session(session_id)
+        
+        existing_map = {d.name.lower(): d for d in state.data_entities}
+        
+        for entity in new_entities:
+            key = entity.name.lower()
+            if key in existing_map:
+                # Merge Fields (Union)
+                current_fields = set(existing_map[key].fields)
+                new_fields = set(entity.fields)
+                existing_map[key].fields = list(current_fields.union(new_fields))
+            else:
+                state.data_entities.append(entity)
+                existing_map[key] = entity
+                
+        await self.repo.save(state)
+        return state
+
+    async def update_nfrs(self, session_id: str, new_nfrs: List[NonFunctionalRequirement]) -> SessionState:
+        state = await self.get_or_create_session(session_id)
+        
+        # Simple Append for now (NFRs are hard to dedup semantically without embeddings)
+        # We just check for exact string match on 'requirement'
+        existing_reqs = {n.requirement.lower() for n in state.nfrs}
+        
+        for nfr in new_nfrs:
+            if nfr.requirement.lower() not in existing_reqs:
+                state.nfrs.append(nfr)
+                existing_reqs.add(nfr.requirement.lower())
+                
         await self.repo.save(state)
         return state
